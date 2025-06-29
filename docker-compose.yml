@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: umbral-nexus-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: umbral-nexus-dev
+      MONGO_INITDB_DATABASE: umbral-nexus
+    volumes:
+      - mongodb-data:/data/db
+      - ./scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - umbral-nexus-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: umbral-nexus-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - umbral-nexus-network
+
+  client:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile.dev
+    container_name: umbral-nexus-client
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:3000
+      - VITE_WS_URL=ws://localhost:3000
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+    depends_on:
+      - server
+    networks:
+      - umbral-nexus-network
+
+  server:
+    build:
+      context: ./packages/server
+      dockerfile: Dockerfile.dev
+    container_name: umbral-nexus-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - MONGODB_URI=mongodb://admin:umbral-nexus-dev@mongodb:27017/umbral-nexus?authSource=admin
+      - REDIS_URL=redis://redis:6379
+      - CORS_ORIGIN=http://localhost:5173
+    volumes:
+      - ./packages/server:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - umbral-nexus-network
+
+volumes:
+  mongodb-data:
+  redis-data:
+
+networks:
+  umbral-nexus-network:
+    driver: bridge

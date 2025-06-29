@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: umbral-nexus-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - client-build:/usr/share/nginx/html:ro
+    depends_on:
+      - server
+    networks:
+      - umbral-nexus-network
+
+  server:
+    build:
+      context: ./packages/server
+      dockerfile: Dockerfile
+    container_name: umbral-nexus-server
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MONGODB_URI=mongodb://mongodb:27017/umbral-nexus
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - umbral-nexus-network
+
+  mongodb:
+    image: mongo:7.0
+    container_name: umbral-nexus-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: umbral-nexus
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - umbral-nexus-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: umbral-nexus-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      - umbral-nexus-network
+
+volumes:
+  mongodb-data:
+  redis-data:
+  client-build:
+
+networks:
+  umbral-nexus-network:
+    driver: bridge
