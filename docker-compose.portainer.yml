@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  umbral-nexus:
+    image: ghcr.io/zbonz/umbralnexus/server:latest
+    container_name: umbral-nexus
+    restart: unless-stopped
+    ports:
+      - "8888:80"
+      - "3000:3000"  # API/WebSocket port
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      MONGODB_URI: mongodb://umbral-nexus-db:27017/umbral-nexus
+      REDIS_URL: redis://umbral-nexus-redis:6379
+      CORS_ORIGIN: https://umbral.zb.wtf
+      PUBLIC_URL: https://umbral.zb.wtf
+    depends_on:
+      - umbral-nexus-db
+      - umbral-nexus-redis
+    networks:
+      - umbral-nexus-network
+
+  umbral-nexus-db:
+    image: mongo:7.0
+    container_name: umbral-nexus-db
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: umbral-nexus
+    volumes:
+      - umbral-nexus-db-data:/data/db
+    networks:
+      - umbral-nexus-network
+
+  umbral-nexus-redis:
+    image: redis:7-alpine
+    container_name: umbral-nexus-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - umbral-nexus-redis-data:/data
+    networks:
+      - umbral-nexus-network
+
+volumes:
+  umbral-nexus-db-data:
+  umbral-nexus-redis-data:
+
+networks:
+  umbral-nexus-network:
+    name: umbral-nexus-network
