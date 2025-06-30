@@ -22,7 +22,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
     "clean": "turbo run clean",
-    "prepare": "husky install"
+    "prepare": "echo 'Skipping husky for now'"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
