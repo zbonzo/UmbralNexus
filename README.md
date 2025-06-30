@@ -64,8 +64,8 @@ Umbral Nexus is a cooperative, turn-based roguelike dungeon crawler designed for
 - **Turborepo** for monorepo management
 - **Docker** for containerization
 - **GitHub Actions** for CI/CD
-- **Vercel/Netlify** for frontend hosting
-- **Fly.io/Render** for backend hosting
+- **Self-hosted** with Docker and CasaOS
+- **On-premises** deployment
 - **ELK Stack** for monitoring
 
 ## 🚀 Getting Started

@@ -1,0 +1,71 @@
+name: Deploy to Cosmos
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy to Cosmos Server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build all packages
+        run: npm run build
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./packages/server/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/server:latest
+            ghcr.io/${{ github.repository }}/server:${{ github.sha }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Deploy to Cosmos Server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.COSMOS_HOST }}
+          username: ${{ secrets.COSMOS_USERNAME }}
+          key: ${{ secrets.COSMOS_SSH_KEY }}
+          port: ${{ secrets.COSMOS_SSH_PORT || 22 }}
+          script: |
+            # Navigate to deployment directory
+            cd ${{ secrets.COSMOS_DEPLOY_PATH || '/DATA/AppData/umbral-nexus' }}
+            
+            # Pull the latest image
+            docker pull ghcr.io/${{ github.repository }}/server:latest
+            
+            # Stop and remove existing containers
+            docker compose -f casaos/docker-compose.yml down
+            
+            # Start services with new image
+            docker compose -f casaos/docker-compose.yml up -d
+            
+            # Clean up old images
+            docker image prune -f

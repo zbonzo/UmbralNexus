@@ -80,8 +80,8 @@ umbral-nexus/
 - **Redis** for session management (Phase 2)
 
 #### Infrastructure
-- **Vercel/Netlify** for frontend hosting
-- **Fly.io/Render** for backend hosting
+- **Self-hosted** with Docker and CasaOS
+- **On-premises** deployment
 - **GitHub Actions** for CI/CD
 - **Cloudflare** for CDN/DDoS protection
 

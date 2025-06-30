@@ -158,8 +158,8 @@ Create the definitive large-group gaming experience that transforms any gatherin
 - **TR-014**: Redis for session management (Phase 2)
 
 ### 5.4 Infrastructure
-- **TR-015**: Vercel/Netlify for frontend hosting
-- **TR-016**: Fly.io/Render for backend hosting
+- **TR-015**: Self-hosted frontend with Docker
+- **TR-016**: On-premises backend deployment with CasaOS
 - **TR-017**: GitHub Actions for CI/CD
 - **TR-018**: Cloudflare for CDN/DDoS protection
 
