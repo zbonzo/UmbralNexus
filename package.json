@@ -5,6 +5,7 @@
   "description": "A browser-based cooperative roguelike dungeon crawler for 1-20 players",
   "author": "Umbral Nexus Team",
   "license": "MIT",
+  "packageManager": "npm@10.9.2",
   "workspaces": [
     "apps/*",
     "packages/*"
