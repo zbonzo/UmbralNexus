@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     pull_policy: never
     ports:
-      - "8888:80"
+      - "8888:8888"
       - "3000:3000"  # API/WebSocket port
     environment:
       NODE_ENV: production

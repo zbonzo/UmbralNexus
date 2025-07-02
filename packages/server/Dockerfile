@@ -50,7 +50,7 @@ COPY --from=builder --chown=nodejs:nodejs /app/packages/shared/dist ./packages/s
 # Switch to non-root user
 USER nodejs
 
-EXPOSE 3000
+EXPOSE 8888
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
