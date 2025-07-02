@@ -5,6 +5,10 @@ on:
     branches: [master]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build-and-deploy:
     name: Build and Deploy to Self-Hosted Server
@@ -34,11 +38,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Convert repository name to lowercase
-        id: repo
-        run: |
-          echo "REPO_LOWER=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
-      
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -46,8 +45,8 @@ jobs:
           file: ./packages/server/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ steps.repo.outputs.REPO_LOWER }}/server:latest
-            ghcr.io/${{ steps.repo.outputs.REPO_LOWER }}/server:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/umbralnexus-server:latest
+            ghcr.io/${{ github.repository_owner }}/umbralnexus-server:${{ github.sha }}
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -67,7 +66,7 @@ jobs:
             wget -O docker-compose.yml https://raw.githubusercontent.com/${{ github.repository }}/main/docker-compose.portainer.yml
             
             # Pull the latest image
-            docker pull ghcr.io/${{ steps.repo.outputs.REPO_LOWER }}/server:latest
+            docker pull ghcr.io/${{ github.repository_owner }}/umbralnexus-server:latest
             
             # Stop and remove existing containers
             docker compose down
