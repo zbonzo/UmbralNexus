@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
+import { connectDatabase } from './config/database';
+import { logger } from './utils/logger';
 
 dotenv.config();
 
@@ -25,7 +27,21 @@ app.get('/health', (_req, res) => {
   });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-});
+// Start server only if not in test environment
+if (process.env.NODE_ENV !== 'test') {
+  const startServer = async () => {
+    try {
+      await connectDatabase();
+      app.listen(PORT, () => {
+        logger.info(`🚀 Server running on http://localhost:${PORT}`);
+      });
+    } catch (error) {
+      logger.error('Failed to start server:', error);
+      process.exit(1);
+    }
+  };
+  
+  startServer();
+}
+
+export default app;

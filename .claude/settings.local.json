@@ -14,7 +14,11 @@
       "Bash(npm run lint)",
       "Bash(npm install:*)",
       "Bash(mv:*)",
-      "Bash(ESLINT_USE_FLAT_CONFIG=false npm run lint)"
+      "Bash(ESLINT_USE_FLAT_CONFIG=false npm run lint)",
+      "Bash(npm run test:*)",
+      "Bash(npm test)",
+      "Bash(npm test:*)",
+      "Bash(chmod:*)"
     ],
     "deny": []
   }

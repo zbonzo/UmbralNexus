@@ -7,6 +7,9 @@ export default {
   theme: {
     extend: {
       colors: {
+        border: 'hsl(var(--border))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
         'umbral': {
           50: '#f5f3ff',
           100: '#ede9fe',
