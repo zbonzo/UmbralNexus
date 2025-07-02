@@ -35,14 +35,17 @@ RUN apk add --no-cache dumb-init
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nodejs -u 1001
 
-# Copy built application
-COPY --from=builder --chown=nodejs:nodejs /app/packages/server/dist ./dist
-COPY --from=builder --chown=nodejs:nodejs /app/packages/server/package*.json ./
-COPY --from=builder --chown=nodejs:nodejs /app/packages/shared/dist ../shared/dist
-COPY --from=builder --chown=nodejs:nodejs /app/packages/shared/package*.json ../shared/
+# Copy package files for production install
+COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
+COPY --from=builder --chown=nodejs:nodejs /app/packages/server/package*.json ./packages/server/
+COPY --from=builder --chown=nodejs:nodejs /app/packages/shared/package*.json ./packages/shared/
 
 # Install production dependencies only
-RUN npm ci --production
+RUN npm ci --workspace=@umbral-nexus/server --omit=dev
+
+# Copy built application
+COPY --from=builder --chown=nodejs:nodejs /app/packages/server/dist ./packages/server/dist
+COPY --from=builder --chown=nodejs:nodejs /app/packages/shared/dist ./packages/shared/dist
 
 # Switch to non-root user
 USER nodejs
@@ -51,4 +54,4 @@ EXPOSE 3000
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/index.js"]
+CMD ["node", "packages/server/dist/index.js"]
