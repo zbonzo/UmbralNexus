@@ -40,20 +40,27 @@ jobs:
           cp docker-compose.portainer.yml $HOME/umbral-nexus/docker-compose.yml
           
           # Update the image name in the compose file to use our local build
-          sed -i 's|image:.*server.*|image: umbralnexus-server:latest|g' $HOME/umbral-nexus/docker-compose.yml
+          sed -i 's|image: ghcr.io/zbonz/umbralnexus/server:latest|image: umbralnexus-server:latest|g' $HOME/umbral-nexus/docker-compose.yml
       
       - name: Deploy application
         run: |
           cd $HOME/umbral-nexus
           
-          # Stop existing containers
-          docker-compose down || true
+          # Stop and remove existing containers (including orphans)
+          docker-compose down --remove-orphans || true
+          
+          # Remove any conflicting containers by name
+          docker rm -f umbral-nexus || true
+          docker rm -f umbral-nexus-server || true
           
           # Start services with new image
           docker-compose up -d
           
           # Show running containers
           docker-compose ps
+          
+          # Show logs for debugging
+          docker-compose logs --tail=50
       
       - name: Clean up old images
         run: |
