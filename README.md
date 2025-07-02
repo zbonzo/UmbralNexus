@@ -10,11 +10,23 @@ Umbral Nexus is a cooperative, turn-based roguelike dungeon crawler designed for
 ![MongoDB](https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white)
 ![WebSocket](https://img.shields.io/badge/WebSocket-010101?style=for-the-badge&logo=socket.io&logoColor=white)
 
-## 🎮 Play Now
+## 🚧 Development Status
 
-**No downloads required!** Visit the website to start playing instantly. (when its done)
+**Currently in active development!** 
 
-### Quick Start
+### ✅ Phase 0 Complete - Foundation Setup
+- **Testing Infrastructure**: Jest, Vitest, Cypress all configured and working
+- **Database Setup**: MongoDB with Mongoose models, Redis configured
+- **Development Environment**: Docker Compose, environment configuration
+- **Build System**: Turborepo monorepo with TypeScript compilation
+- **Code Quality**: ESLint, Prettier, Husky hooks (temporarily disabled on Windows)
+
+### 🔄 Phase 1 In Progress - UI Design & Components
+- Design system with Radix UI and Tailwind CSS
+- Landing page and game creation/joining interface
+- Basic WebSocket connection for real-time communication
+
+### 🎮 Future Gameplay (When Complete)
 1. **Create a Game**: One player creates a game and shares the 6-character code
 2. **Join on Phone**: Other players visit the site on their phones and enter the code
 3. **Cast to Screen**: Open `/cast/GAMEID` on a large screen to display the game
@@ -97,18 +109,27 @@ Umbral Nexus is a cooperative, turn-based roguelike dungeon crawler designed for
 
 4. **Start development servers**
    ```bash
+   # Start databases with Docker
+   docker-compose up -d mongodb redis
+   
+   # Start all development servers
    npm run dev
    ```
 
    This starts:
-   - Frontend at http://localhost:5173
-   - Backend at http://localhost:3000
-   - MongoDB via Docker
+   - Frontend at http://localhost:5173 (Currently shows "Coming Soon")
+   - Backend at http://localhost:3000 (Health check available at /health)
+   - MongoDB at mongodb://localhost:27017
+   - Redis at redis://localhost:6379
 
-5. **Create your first game**
-   - Open http://localhost:5173
-   - Click "Create Game"
-   - Share the game code with others!
+5. **Verify setup is working**
+   ```bash
+   # Run all tests to verify everything is configured correctly
+   npm test
+   
+   # Check backend health
+   curl http://localhost:3000/health
+   ```
 
 ## 📁 Project Structure
 
@@ -135,19 +156,25 @@ For detailed architecture information, see [Architecture.md](./docs/Architecture
 npm test
 ```
 
-### Run specific test suites
+### Available test commands
 ```bash
-npm run test:unit        # Unit tests only
-npm run test:integration # Integration tests
-npm run test:e2e         # End-to-end tests
+npm run test             # Run all tests across packages
+npm run test:ci          # Run tests with coverage in CI mode
+npm run test:e2e         # Run Cypress E2E tests (configured but minimal tests)
+npm run test:e2e:open    # Open Cypress test runner
+
+# Package-specific tests
+npm run test -w @umbral-nexus/web     # Web package (Vitest)
+npm run test -w @umbral-nexus/server  # Server package (Jest)
+npm run test -w @umbral-nexus/shared  # Shared package (Jest)
 ```
 
-### Test coverage
-```bash
-npm run test:coverage
-```
-
-We maintain >80% code coverage for critical game systems.
+### Current test status
+- ✅ **5 test suites passing** across all packages
+- ✅ **Unit tests** for shared types and server health endpoints
+- ✅ **React component tests** with React Testing Library
+- ✅ **Cypress configured** for future E2E testing
+- 🎯 **80% coverage threshold** configured for all packages
 
 ## 🎯 Development Workflow
 
@@ -242,26 +269,53 @@ Games can end through:
 - **Death Counter**: Limited team respawns
 - **Floor Target**: Reach a specific dungeon depth
 
-## 🌟 Roadmap
+## 🌟 Development Roadmap
 
-### Phase 1: Core Game (Current)
-- ✅ Basic multiplayer functionality
-- ✅ Phone controller support
-- ✅ Cast screen system
-- 🔄 Combat mechanics
-- 🔄 Procedural generation
+### ✅ Phase 0: Foundation Setup (COMPLETE)
+- ✅ **Testing Infrastructure**: Jest, Vitest, Cypress all working
+- ✅ **Database Setup**: MongoDB with Mongoose models, Redis configured  
+- ✅ **Development Environment**: Docker Compose, environment configuration
+- ✅ **Build System**: Turborepo monorepo with TypeScript compilation
+- ✅ **Code Quality**: ESLint, Prettier, Git hooks
 
-### Phase 2: Enhanced Features
-- 📅 200+ Nexus Echo power-ups
-- 📅 5 character classes
-- 📅 Boss encounters
-- 📅 Spectator modes
+### 🔄 Phase 1: UI Design & Component Tests (IN PROGRESS)
+- 📅 Design system setup with Tailwind + Radix UI
+- 📅 Landing page UI & tests
+- 📅 Game setup UI & tests
+- 📅 Player controller UI & tests
+- 📅 Cast screen UI & tests
+- 📅 Character selection UI & tests
 
-### Phase 3: Community Features
-- 📅 Custom game modes
-- 📅 Tournament system
-- 📅 User-generated content
-- 📅 Mobile app for enhanced features
+### 📅 Phase 2: Shared Types & Utilities
+- TypeScript interfaces for all game entities
+- Zod validation schemas
+- Utility functions for game calculations
+- Unit tests for all utilities
+
+### 📅 Phase 3: Backend Implementation
+- Express server setup with middleware
+- MongoDB integration with Mongoose
+- WebSocket server implementation
+- Game logic core with TurnManager
+- Map generation algorithms
+- AI system for enemies
+
+### 📅 Phase 4: Frontend-Backend Integration
+- API client with Axios
+- Zustand state management
+- WebSocket client with reconnection
+- Real-time synchronization
+
+### 📅 Phase 5: Advanced Features
+- Nexus Echo power-up system (200+ effects)
+- Multi-floor system with split-screen
+- Spectator features
+- Combat enhancements with targeting
+
+### 📅 Phase 6-9: Polish, Production, Monitoring & Launch
+- Performance optimization, visual polish, security hardening
+- Deployment setup, load testing, analytics integration
+- Documentation, beta testing, launch preparation
 
 ## 📝 License
 

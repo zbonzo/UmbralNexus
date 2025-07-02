@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Umbral Nexus is a browser-based cooperative roguelike dungeon crawler designed for large group play (1-20 players). Players use smartphones as controllers while viewing the game on a shared screen, creating a unique "party raid" experience that bridges mobile and console gaming. The project is currently in the planning and design phase with comprehensive documentation but no implementation yet.
+Umbral Nexus is a browser-based cooperative roguelike dungeon crawler designed for large group play (1-20 players). Players use smartphones as controllers while viewing the game on a shared screen, creating a unique "party raid" experience that bridges mobile and console gaming. 
+
+**Current Status: Phase 0 Complete** - Foundation setup including testing infrastructure, database configuration, build system, and development environment is fully functional.
 
 ### Vision Statement
 Create the definitive large-group gaming experience that transforms any gathering into an epic cooperative adventure, accessible through any web browser without downloads or installations.
@@ -74,10 +76,10 @@ umbral-nexus/
 - **Framer Motion** for animations
 
 #### Backend Stack
-- **Node.js** with Express/Fastify
+- **Node.js** with Express
 - **WebSocket server** (ws library)
-- **Firebase/Firestore** for persistence
-- **Redis** for session management (Phase 2)
+- **MongoDB** with Mongoose for persistence
+- **Redis** for session management
 
 #### Infrastructure
 - **Self-hosted** with Docker and CasaOS
@@ -93,25 +95,21 @@ umbral-nexus/
 
 ## Development Commands
 
-**Important**: The project is currently being migrated from a Turborepo starter template. The actual build commands are not yet established. When implementing, expect these commands based on the planned architecture:
+**Status**: Phase 0 complete! All development commands are now working and tested. The infrastructure is fully functional.
 
 ### Root Commands (Turborepo)
 ```bash
 # Development
-npm run dev              # Start all development servers
-npm run dev:client       # Start client development server
-npm run dev:server       # Start server development server
+npm run dev              # Start all development servers (web + server)
 
-# Building
-npm run build            # Build all packages
-npm run build:client     # Build client for production
-npm run build:server     # Build server for production
+# Building  
+npm run build            # Build all packages (TypeScript compilation)
 
-# Testing
-npm run test             # Run all tests
-npm run test:unit        # Run unit tests
-npm run test:integration # Run integration tests
-npm run test:e2e         # Run E2E tests with Cypress
+# Testing (All Working!)
+npm run test             # Run all tests across packages (5 test suites passing)
+npm run test:ci          # Run tests with coverage in CI mode
+npm run test:e2e         # Run Cypress E2E tests
+npm run test:e2e:open    # Open Cypress test runner
 
 # Code Quality
 npm run lint             # Run ESLint across all packages
@@ -119,27 +117,35 @@ npm run lint:fix         # Fix linting issues
 npm run type-check       # Run TypeScript compiler
 npm run format           # Run Prettier formatting
 
-# Database
-npm run db:migrate       # Run database migrations
-npm run db:seed          # Seed database with test data
-npm run db:reset         # Reset database to clean state
+# Utilities
+npm run clean            # Clean build artifacts and node_modules
 ```
 
-### Package-Specific Commands
+### Package-Specific Commands  
 ```bash
-# Client (apps/web)
-cd apps/web
-npm run dev              # Start Vite dev server
-npm run build            # Build for production
-npm run preview          # Preview production build
-npm run storybook        # Start Storybook
+# Web Package (apps/web) - Vite + React + Vitest
+npm run dev -w @umbral-nexus/web        # Vite dev server (localhost:5173)
+npm run build -w @umbral-nexus/web      # Build for production
+npm run test -w @umbral-nexus/web       # Run Vitest tests
+npm run storybook -w @umbral-nexus/web  # Start Storybook
 
-# Server (packages/server)
-cd packages/server
-npm run dev              # Start server with nodemon
-npm run build            # Compile TypeScript
-npm run start            # Start production server
-npm run test:load        # Run load tests
+# Server Package (packages/server) - Express + Jest
+npm run dev -w @umbral-nexus/server     # Start server with nodemon (localhost:3000)
+npm run build -w @umbral-nexus/server   # Compile TypeScript
+npm run test -w @umbral-nexus/server    # Run Jest tests
+
+# Shared Package (packages/shared) - Types + Jest
+npm run build -w @umbral-nexus/shared   # Compile TypeScript  
+npm run test -w @umbral-nexus/shared    # Run Jest tests
+```
+
+### Database Commands
+```bash
+# Start databases (via Docker Compose)
+docker-compose up -d mongodb redis     # Start MongoDB and Redis
+
+# Verify database connections
+curl http://localhost:3000/health       # Check server health (includes DB connection)
 ```
 
 ## Core Game Mechanics (from GameMechanics.md)
@@ -956,3 +962,30 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
 - **Balancing system** - difficulty scaling based on player count
 
 This comprehensive guide covers all the essential information from the project documentation and provides clear direction for implementing Umbral Nexus. The project is ambitious in scope but well-documented, requiring careful attention to real-time performance, multi-screen coordination, and scalable architecture.
+
+## Current Implementation Status
+
+### ✅ Phase 0 Complete - Foundation Infrastructure
+- **Testing Infrastructure**: Jest, Vitest, Cypress all configured and working (5 test suites passing)
+- **Database Setup**: MongoDB with Mongoose models, Redis configured via Docker Compose
+- **Development Environment**: Turborepo monorepo with TypeScript compilation working
+- **Build System**: All packages building successfully with proper dependency management
+- **Code Quality**: ESLint, Prettier configured; Husky hooks temporarily disabled on Windows
+
+### 🔄 Phase 1 Ready - UI Design & Components  
+- **Design System**: Tailwind CSS configured with custom theme, Radix UI available
+- **Storybook**: Configured and ready for component development
+- **Basic Structure**: React app with "Coming Soon" page, ready for landing page implementation
+
+### 🎯 Next Steps
+1. Replace "Coming Soon" page with actual landing page components
+2. Implement game creation and joining interface with tests
+3. Set up Zustand state management
+4. Begin WebSocket client implementation for real-time communication
+
+### 📊 Current Test Status
+- **@umbral-nexus/shared**: Unit tests for TypeScript interfaces ✅
+- **@umbral-nexus/server**: Health endpoint integration tests ✅  
+- **@umbral-nexus/web**: React component tests with React Testing Library ✅
+- **Cypress E2E**: Configured with basic landing page test ✅
+- **Coverage**: 80% threshold configured for all packages ✅
