@@ -26,7 +26,8 @@
     },
     "lint": {
       "outputs": [],
-      "cache": false
+      "cache": false,
+      "env": ["ESLINT_USE_FLAT_CONFIG"]
     },
     "lint:fix": {
       "outputs": [],

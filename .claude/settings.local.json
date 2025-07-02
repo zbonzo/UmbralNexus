@@ -12,7 +12,9 @@
       "Bash(npm run build:*)",
       "Bash(find:*)",
       "Bash(npm run lint)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(mv:*)",
+      "Bash(ESLINT_USE_FLAT_CONFIG=false npm run lint)"
     ],
     "deny": []
   }

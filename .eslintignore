@@ -1,0 +1,10 @@
+node_modules
+dist
+build
+coverage
+.turbo
+*.config.js
+*.config.ts
+storybook-static
+.next
+out

@@ -12,8 +12,8 @@
     "test:unit": "jest --testPathPattern=unit",
     "test:integration": "jest --testPathPattern=integration",
     "test:load": "artillery run tests/load/game-load.yml",
-    "lint": "ESLINT_USE_FLAT_CONFIG=false eslint . --ext ts --report-unused-disable-directives --max-warnings 0",
-    "lint:fix": "ESLINT_USE_FLAT_CONFIG=false eslint . --ext ts --fix",
+    "lint": "eslint . --ext ts --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint . --ext ts --fix",
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist .turbo node_modules"
   },

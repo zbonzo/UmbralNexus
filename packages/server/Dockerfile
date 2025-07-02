@@ -1,17 +1,21 @@
 # Build stage
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copy root files first
 COPY package*.json ./
-COPY ../../packages/shared/package*.json ../../packages/shared/
+COPY tsconfig.base.json ./
+COPY turbo.json ./
+
+# Copy package files
+COPY packages/shared/package*.json packages/shared/
 COPY packages/server/package*.json packages/server/
 
 # Install dependencies
 RUN npm ci --workspace=@umbral-nexus/server
 
-# Copy source code
+# Copy source code and configs
 COPY packages/shared packages/shared
 COPY packages/server packages/server
 
@@ -20,7 +24,7 @@ RUN npm run build --workspace=@umbral-nexus/shared
 RUN npm run build --workspace=@umbral-nexus/server
 
 # Production stage
-FROM node:20-alpine
+FROM node:22-alpine
 
 WORKDIR /app
 
