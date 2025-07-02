@@ -4,20 +4,43 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --border: 214.3 31.8% 91.4%;
+    /* Umbral Nexus Color Palette - extracted from concept art */
+    --background: 222 47% 6%;           /* #0f0f0f - Deep dark background */
+    --foreground: 25 95% 53%;           /* #ff6b35 - Umbral orange */
+    --card: 220 39% 11%;                /* #1a1a1a - Card backgrounds */
+    --card-foreground: 0 0% 95%;        /* #f2f2f2 - Text on cards */
+    --border: 25 95% 53%;               /* #ff6b35 - Orange borders */
+    --muted: 220 39% 11%;               /* #1a1a1a - Muted backgrounds */
+    --muted-foreground: 0 0% 70%;       /* #b3b3b3 - Muted text */
+    --accent: 25 95% 53%;               /* #ff6b35 - Accent color */
+    --accent-foreground: 222 47% 6%;    /* #0f0f0f - Text on accent */
+    --destructive: 0 84% 60%;           /* #e53e3e - Error/danger */
+    --destructive-foreground: 0 0% 98%; /* #fafafa - Text on destructive */
     
-    --umbral-primary: 262.1 83.3% 57.8%;
-    --umbral-secondary: 261.8 46.7% 41.4%;
+    /* Game-specific colors */
+    --umbral-orange: 25 95% 53%;        /* #ff6b35 - Primary orange */
+    --umbral-dark: 222 47% 6%;          /* #0f0f0f - Deep background */
+    --umbral-card: 220 39% 11%;         /* #1a1a1a - Card/panel background */
+    --umbral-glow: 25 95% 53%;          /* #ff6b35 - Glow effects */
     
-    --radius: 0.5rem;
+    /* Character class colors */
+    --warrior-color: 0 72% 51%;         /* #d53f41 - Red for warrior */
+    --ranger-color: 142 69% 58%;        /* #48bb78 - Green for ranger */
+    --mage-color: 252 83% 57%;          /* #6366f1 - Blue for mage */
+    --cleric-color: 45 93% 47%;         /* #f6ad55 - Yellow for cleric */
+    
+    --radius: 0.75rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
+    /* Dark mode uses the same palette since it's already dark-themed */
+    --background: 222 47% 6%;
+    --foreground: 25 95% 53%;
+    --card: 220 39% 11%;
+    --card-foreground: 0 0% 95%;
+    --border: 25 95% 53%;
+    --muted: 220 39% 11%;
+    --muted-foreground: 0 0% 70%;
   }
 }
 
@@ -26,5 +49,19 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .glow-text {
+    text-shadow: 0 0 10px hsl(var(--umbral-glow)), 0 0 20px hsl(var(--umbral-glow)), 0 0 40px hsl(var(--umbral-glow));
+  }
+  
+  .glow-border {
+    box-shadow: 0 0 5px hsl(var(--umbral-glow)), 0 0 10px hsl(var(--umbral-glow)), 0 0 15px hsl(var(--umbral-glow));
+  }
+  
+  .umbral-gradient {
+    background: linear-gradient(135deg, hsl(var(--umbral-orange)) 0%, hsl(var(--umbral-orange) / 0.8) 100%);
   }
 }
