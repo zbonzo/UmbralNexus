@@ -12,8 +12,8 @@ COPY turbo.json ./
 COPY packages/shared/package*.json packages/shared/
 COPY packages/server/package*.json packages/server/
 
-# Install dependencies
-RUN npm ci --workspace=@umbral-nexus/server
+# Install dependencies (skip husky hooks in Docker)
+RUN npm ci --workspace=@umbral-nexus/server --ignore-scripts
 
 # Copy source code and configs
 COPY packages/shared packages/shared
@@ -40,8 +40,8 @@ COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
 COPY --from=builder --chown=nodejs:nodejs /app/packages/server/package*.json ./packages/server/
 COPY --from=builder --chown=nodejs:nodejs /app/packages/shared/package*.json ./packages/shared/
 
-# Install production dependencies only
-RUN npm ci --workspace=@umbral-nexus/server --omit=dev
+# Install production dependencies only (skip husky hooks in Docker)
+RUN npm ci --workspace=@umbral-nexus/server --omit=dev --ignore-scripts
 
 # Copy built application
 COPY --from=builder --chown=nodejs:nodejs /app/packages/server/dist ./packages/server/dist
