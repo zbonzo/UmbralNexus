@@ -5,7 +5,7 @@ services:
     container_name: umbral-nexus
     restart: unless-stopped
     ports:
-      - target: 80
+      - target: 3000
         published: 8888
         protocol: tcp
     environment:
@@ -28,7 +28,7 @@ services:
       - umbral-nexus-network
     x-casaos:
       ports:
-        - container: "80"
+        - container: "3000"
           description:
             en_us: "Web UI Port"
       volumes:
