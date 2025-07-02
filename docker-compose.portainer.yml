@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   umbral-nexus:
-    image: ghcr.io/zbonz/umbralnexus/server:latest
+    image: umbralnexus-server:latest
     container_name: umbral-nexus
     restart: unless-stopped
     pull_policy: never
