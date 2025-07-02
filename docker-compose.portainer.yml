@@ -11,7 +11,7 @@ services:
       - "3000:3000"  # API/WebSocket port
     environment:
       NODE_ENV: production
-      PORT: 3000
+      PORT: 8888
       MONGODB_URI: mongodb://umbral-nexus-db:27017/umbral-nexus
       REDIS_URL: redis://umbral-nexus-redis:6379
       CORS_ORIGIN: https://umbral.zb.wtf

@@ -40,7 +40,7 @@ jobs:
           cp docker-compose.portainer.yml $HOME/umbral-nexus/docker-compose.yml
           
           # Update the image name in the compose file to use our local build
-          sed -i 's|image: ghcr.io/zbonz/umbralnexus/server:latest|image: umbralnexus-server:latest|g' $HOME/umbral-nexus/docker-compose.yml
+          sed -i 's|image: ghcr.io/zbonzo/umbralnexus/server:latest|image: umbralnexus-server:latest|g' $HOME/umbral-nexus/docker-compose.yml
       
       - name: Deploy application
         run: |
