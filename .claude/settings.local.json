@@ -5,7 +5,11 @@
       "Bash(rm:*)",
       "Bash(npm cache clean:*)",
       "Bash(grep:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(true)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run clean:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": []
   }
