@@ -5,6 +5,7 @@ services:
     image: ghcr.io/zbonz/umbralnexus/server:latest
     container_name: umbral-nexus
     restart: unless-stopped
+    pull_policy: never
     ports:
       - "8888:80"
       - "3000:3000"  # API/WebSocket port
