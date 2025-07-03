@@ -13,7 +13,7 @@ COPY packages/shared/package*.json packages/shared/
 COPY apps/web/package*.json apps/web/
 
 # Install dependencies
-RUN npm ci --workspace=@umbral-nexus/web --ignore-scripts
+RUN npm ci --workspace=@umbral-nexus/web --ignore-scripts --legacy-peer-deps
 
 # Copy source code
 COPY packages/shared packages/shared
@@ -38,7 +38,7 @@ COPY packages/shared/package*.json packages/shared/
 COPY packages/server/package*.json packages/server/
 
 # Install dependencies
-RUN npm ci --workspace=@umbral-nexus/server --ignore-scripts
+RUN npm ci --workspace=@umbral-nexus/server --ignore-scripts --legacy-peer-deps
 
 # Copy source code
 COPY packages/shared packages/shared
@@ -66,7 +66,7 @@ COPY --from=server-builder --chown=nodejs:nodejs /app/packages/server/package*.j
 COPY --from=server-builder --chown=nodejs:nodejs /app/packages/shared/package*.json ./packages/shared/
 
 # Install production dependencies
-RUN npm ci --workspace=@umbral-nexus/server --omit=dev --ignore-scripts
+RUN npm ci --workspace=@umbral-nexus/server --omit=dev --ignore-scripts --legacy-peer-deps
 
 # Copy built server application
 COPY --from=server-builder --chown=nodejs:nodejs /app/packages/server/dist ./packages/server/dist
