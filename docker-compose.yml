@@ -36,11 +36,12 @@ services:
     container_name: umbral-nexus-client
     restart: unless-stopped
     ports:
-      - "5173:5173"
+      - "8886:5173"
     environment:
       - NODE_ENV=development
-      - VITE_API_URL=http://localhost:3000
-      - VITE_WS_URL=ws://localhost:3000
+      - VITE_PORT=5173
+      - VITE_API_URL=http://localhost:8887
+      - VITE_WS_URL=ws://localhost:8887
     volumes:
       - ./apps/web:/app
       - /app/node_modules
@@ -56,14 +57,13 @@ services:
     container_name: umbral-nexus-server
     restart: unless-stopped
     ports:
-      - "3000:3000"
-      - "8888:3000"
+      - "8887:8887"
     environment:
       - NODE_ENV=development
-      - PORT=3000
+      - PORT=8887
       - MONGODB_URI=mongodb://admin:umbral-nexus-dev@mongodb:27017/umbral-nexus?authSource=admin
       - REDIS_URL=redis://redis:6379
-      - CORS_ORIGIN=http://localhost:5173
+      - CORS_ORIGIN=http://localhost:8886
     volumes:
       - ./packages/server:/app
       - /app/node_modules

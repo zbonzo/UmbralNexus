@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@umbral-nexus/shared": "file:../shared",
+    "compression": "latest",
     "cors": "latest",
     "dotenv": "latest",
     "express": "latest",
@@ -33,6 +34,7 @@
     "zod": "latest"
   },
   "devDependencies": {
+    "@types/compression": "latest",
     "@types/cors": "latest",
     "@types/express": "latest",
     "@types/jest": "latest",
