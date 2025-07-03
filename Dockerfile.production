@@ -75,9 +75,11 @@ COPY --from=server-builder --chown=nodejs:nodejs /app/packages/shared/dist ./pac
 # Copy built React app
 COPY --from=web-builder --chown=nodejs:nodejs /app/apps/web/dist ./packages/server/web/dist
 
-# Create supervisor config
+# Create supervisor config directory
 RUN mkdir -p /etc/supervisor/conf.d
-COPY --chown=nodejs:nodejs <<'EOF' /etc/supervisor/conf.d/supervisord.conf
+
+# Create supervisor config file
+RUN cat > /etc/supervisor/conf.d/supervisord.conf << 'EOFCONFIG'
 [supervisord]
 nodaemon=true
 user=nodejs
@@ -97,7 +99,7 @@ stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr
 stderr_logfile_maxbytes=0
 autorestart=true
-EOF
+EOFCONFIG
 
 # Switch to non-root user
 USER nodejs
