@@ -63,3 +63,4 @@ data/
 # Docker
 .docker/
 docs/assets/concept-art/
+.claude/

@@ -8,13 +8,14 @@ COPY package*.json ./
 COPY tsconfig.base.json ./
 COPY turbo.json ./
 
-# Copy package files
+# Copy all package files
 COPY packages/shared/package*.json packages/shared/
+COPY packages/server/package*.json packages/server/
 COPY apps/web/package*.json apps/web/
 
-# Install dependencies
+# Install all dependencies first
 ENV HUSKY=0
-RUN npm ci --workspace=@umbral-nexus/web --ignore-scripts --legacy-peer-deps
+RUN npm ci --ignore-scripts --legacy-peer-deps
 
 # Copy source code
 COPY packages/shared packages/shared
@@ -34,13 +35,14 @@ COPY package*.json ./
 COPY tsconfig.base.json ./
 COPY turbo.json ./
 
-# Copy package files
+# Copy all package files
 COPY packages/shared/package*.json packages/shared/
 COPY packages/server/package*.json packages/server/
+COPY apps/web/package*.json apps/web/
 
 # Install dependencies
 ENV HUSKY=0
-RUN npm ci --workspace=@umbral-nexus/server --ignore-scripts --legacy-peer-deps
+RUN npm ci --ignore-scripts --legacy-peer-deps
 
 # Copy source code
 COPY packages/shared packages/shared
@@ -77,31 +79,9 @@ COPY --from=server-builder --chown=nodejs:nodejs /app/packages/shared/dist ./pac
 # Copy built React app
 COPY --from=web-builder --chown=nodejs:nodejs /app/apps/web/dist ./packages/server/web/dist
 
-# Create supervisor config directory
-RUN mkdir -p /etc/supervisor/conf.d
-
-# Create supervisor config file
-RUN cat > /etc/supervisor/conf.d/supervisord.conf << 'EOFCONFIG'
-[supervisord]
-nodaemon=true
-user=nodejs
-
-[program:api-server]
-command=node packages/server/dist/index.js
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stderr
-stderr_logfile_maxbytes=0
-autorestart=true
-
-[program:frontend-server]
-command=node packages/server/dist/frontend-server.js
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stderr
-stderr_logfile_maxbytes=0
-autorestart=true
-EOFCONFIG
+# Copy startup script
+COPY packages/server/start-production.sh ./start-production.sh
+RUN chmod +x ./start-production.sh && chown nodejs:nodejs ./start-production.sh
 
 # Switch to non-root user
 USER nodejs
@@ -111,4 +91,4 @@ EXPOSE 8887 8888
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+CMD ["sh", "./start-production.sh"]
