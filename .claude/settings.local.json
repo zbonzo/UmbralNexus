@@ -20,7 +20,8 @@
       "Bash(npm test:*)",
       "Bash(chmod:*)",
       "Bash(npm run dev:*)",
-      "Bash(npm ci:*)"
+      "Bash(npm ci:*)",
+      "Bash(docker build:*)"
     ],
     "deny": []
   }
