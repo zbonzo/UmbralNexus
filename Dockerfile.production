@@ -79,6 +79,9 @@ COPY --from=server-builder --chown=nodejs:nodejs /app/packages/shared/dist ./pac
 # Copy built React app
 COPY --from=web-builder --chown=nodejs:nodejs /app/apps/web/dist ./packages/server/web/dist
 
+# Copy server source files (for simple-frontend.js)
+COPY --from=server-builder --chown=nodejs:nodejs /app/packages/server/src ./packages/server/src
+
 # Copy startup script
 COPY packages/server/start-production.sh ./start-production.sh
 RUN chmod +x ./start-production.sh && chown nodejs:nodejs ./start-production.sh

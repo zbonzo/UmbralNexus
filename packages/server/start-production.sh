@@ -2,7 +2,7 @@
 
 # Start frontend server in background
 echo "Starting frontend server on port ${FRONTEND_PORT:-8888}..."
-node packages/server/dist/frontend-server.js &
+node packages/server/src/static-server.js &
 FRONTEND_PID=$!
 
 # Start API server

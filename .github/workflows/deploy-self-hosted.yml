@@ -11,7 +11,7 @@ permissions:
 jobs:
   build-and-deploy:
     name: Build and Deploy to Apps Server
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       
@@ -35,51 +35,31 @@ jobs:
         run: |
           docker save umbralnexus-server:latest | gzip > umbralnexus-server.tar.gz
       
-      - name: Deploy to Apps Server
-        env:
-          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      - name: Deploy Locally on Apps Server
         run: |
-          # Set up SSH
-          mkdir -p ~/.ssh
-          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts
+          # Since we're running on the apps server, deploy directly
           
-          # Copy Docker image to apps server
-          scp -i ~/.ssh/deploy_key umbralnexus-server.tar.gz $DEPLOY_USER@$DEPLOY_HOST:/tmp/
+          # Load Docker image
+          docker load < umbralnexus-server.tar.gz
+          
+          # Create deployment directory
+          mkdir -p ~/umbral-nexus
           
           # Copy docker-compose file
-          scp -i ~/.ssh/deploy_key docker-compose.portainer.yml $DEPLOY_USER@$DEPLOY_HOST:/tmp/docker-compose.yml
+          cp docker-compose.portainer.yml ~/umbral-nexus/docker-compose.yml
           
-          # Deploy on apps server
-          ssh -i ~/.ssh/deploy_key $DEPLOY_USER@$DEPLOY_HOST << 'ENDSSH'
-            # Load Docker image
-            docker load < /tmp/umbralnexus-server.tar.gz
-            
-            # Create deployment directory
-            mkdir -p ~/umbral-nexus
-            
-            # Move docker-compose file
-            mv /tmp/docker-compose.yml ~/umbral-nexus/
-            
-            # Go to deployment directory
-            cd ~/umbral-nexus
-            
-            # Stop existing containers
-            docker-compose down --remove-orphans || true
-            
-            # Start services
-            docker-compose up -d
-            
-            # Clean up
-            rm -f /tmp/umbralnexus-server.tar.gz
-            
-            # Show status
-            docker-compose ps
-            docker-compose logs --tail=50
-          ENDSSH
+          # Go to deployment directory
+          cd ~/umbral-nexus
+          
+          # Stop existing containers
+          docker compose down --remove-orphans || true
+          
+          # Start services
+          docker compose up -d
+          
+          # Show status
+          docker compose ps
+          docker compose logs --tail=50
       
       - name: Clean up
         if: always()
