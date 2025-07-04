@@ -10,8 +10,8 @@ permissions:
 
 jobs:
   build-and-deploy:
-    name: Build and Deploy to Self-Hosted Server
-    runs-on: self-hosted
+    name: Build and Deploy to Apps Server
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
@@ -31,38 +31,58 @@ jobs:
         run: |
           docker build -f Dockerfile.production -t umbralnexus-server:latest .
       
-      - name: Prepare deployment directory
+      - name: Save Docker image
         run: |
-          # Create deployment directory if it doesn't exist
-          mkdir -p $HOME/umbral-nexus
-          
-          # Copy docker-compose file to deployment directory
-          cp docker-compose.portainer.yml $HOME/umbral-nexus/docker-compose.yml
-          
-          # Update the image name in the compose file to use our local build
-          sed -i 's|image: ghcr.io/zbonzo/umbralnexus/server:latest|image: umbralnexus-server:latest|g' $HOME/umbral-nexus/docker-compose.yml
+          docker save umbralnexus-server:latest | gzip > umbralnexus-server.tar.gz
       
-      - name: Deploy application
+      - name: Deploy to Apps Server
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
         run: |
-          cd $HOME/umbral-nexus
+          # Set up SSH
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts
           
-          # Stop and remove existing containers (including orphans)
-          docker-compose down --remove-orphans || true
+          # Copy Docker image to apps server
+          scp -i ~/.ssh/deploy_key umbralnexus-server.tar.gz $DEPLOY_USER@$DEPLOY_HOST:/tmp/
           
-          # Remove any conflicting containers by name
-          docker rm -f umbral-nexus || true
-          docker rm -f umbral-nexus-server || true
+          # Copy docker-compose file
+          scp -i ~/.ssh/deploy_key docker-compose.portainer.yml $DEPLOY_USER@$DEPLOY_HOST:/tmp/docker-compose.yml
           
-          # Start services with new image
-          docker-compose up -d
-          
-          # Show running containers
-          docker-compose ps
-          
-          # Show logs for debugging
-          docker-compose logs --tail=50
+          # Deploy on apps server
+          ssh -i ~/.ssh/deploy_key $DEPLOY_USER@$DEPLOY_HOST << 'ENDSSH'
+            # Load Docker image
+            docker load < /tmp/umbralnexus-server.tar.gz
+            
+            # Create deployment directory
+            mkdir -p ~/umbral-nexus
+            
+            # Move docker-compose file
+            mv /tmp/docker-compose.yml ~/umbral-nexus/
+            
+            # Go to deployment directory
+            cd ~/umbral-nexus
+            
+            # Stop existing containers
+            docker-compose down --remove-orphans || true
+            
+            # Start services
+            docker-compose up -d
+            
+            # Clean up
+            rm -f /tmp/umbralnexus-server.tar.gz
+            
+            # Show status
+            docker-compose ps
+            docker-compose logs --tail=50
+          ENDSSH
       
-      - name: Clean up old images
+      - name: Clean up
+        if: always()
         run: |
-          # Remove dangling images to save space
-          docker image prune -f
+          rm -f ~/.ssh/deploy_key
+          rm -f umbralnexus-server.tar.gz
