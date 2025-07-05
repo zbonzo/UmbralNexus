@@ -28,7 +28,8 @@
       "Bash(docker logs:*)",
       "Bash(curl:*)",
       "Bash(docker exec:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(touch:*)"
     ],
     "deny": []
   }

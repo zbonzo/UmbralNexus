@@ -1,23 +1,32 @@
 import React, { useState } from 'react';
+import { gameFlowManager } from '../services/gameFlowManager';
 import { HeroSection } from '../components/landing/HeroSection';
 import { CharacterClasses } from '../components/landing/CharacterClasses';
 import { GameFeatures } from '../components/landing/GameFeatures';
 import { Button } from '../components/ui/button';
+import { SimpleJoinGameForm } from '../components/game/SimpleJoinGameForm';
+import { SimpleCreateGameForm } from '../components/game/SimpleCreateGameForm';
 
 export const LandingPage: React.FC = () => {
   const [showCreateGame, setShowCreateGame] = useState(false);
   const [showJoinGame, setShowJoinGame] = useState(false);
 
   const handleCreateGame = () => {
-    // TODO: Implement game creation modal/flow
-    console.log('Create game clicked');
     setShowCreateGame(true);
   };
 
   const handleJoinGame = () => {
-    // TODO: Implement join game modal/flow
-    console.log('Join game clicked');
     setShowJoinGame(true);
+  };
+
+  const handleGameCreated = async (config: { hostName: string; playerCap: number; difficulty: string }) => {
+    setShowCreateGame(false);
+    await gameFlowManager.createGame(config);
+  };
+
+  const handleGameJoined = async (gameCode: string, playerName: string) => {
+    setShowJoinGame(false);
+    await gameFlowManager.joinGame(gameCode, playerName);
   };
 
   return (
@@ -60,32 +69,26 @@ export const LandingPage: React.FC = () => {
         </div>
       </footer>
 
-      {/* Temporary debug modals */}
+      {/* Create Game Modal */}
       {showCreateGame && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-umbral-card p-6 rounded-lg max-w-md w-full">
-            <h3 className="text-xl font-bold mb-4 text-umbral-orange">Create Game</h3>
-            <p className="text-muted-foreground mb-4">
-              Game creation flow will be implemented in Phase 2
-            </p>
-            <Button onClick={() => setShowCreateGame(false)}>
-              Close
-            </Button>
-          </div>
+        <div 
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]"
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 }}
+        >
+          <SimpleCreateGameForm
+            onCreate={handleGameCreated}
+            onCancel={() => setShowCreateGame(false)}
+          />
         </div>
       )}
 
+      {/* Join Game Modal */}
       {showJoinGame && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-umbral-card p-6 rounded-lg max-w-md w-full">
-            <h3 className="text-xl font-bold mb-4 text-umbral-orange">Join Game</h3>
-            <p className="text-muted-foreground mb-4">
-              Game joining flow will be implemented in Phase 2
-            </p>
-            <Button onClick={() => setShowJoinGame(false)}>
-              Close
-            </Button>
-          </div>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
+          <SimpleJoinGameForm
+            onJoin={handleGameJoined}
+            onCancel={() => setShowJoinGame(false)}
+          />
         </div>
       )}
     </div>
