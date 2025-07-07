@@ -12,14 +12,16 @@ interface SimpleCreateGameFormProps {
   onCreate: (config: GameConfig) => void;
   onCancel: () => void;
   isLoading?: boolean;
+  defaultName?: string;
 }
 
 export const SimpleCreateGameForm: React.FC<SimpleCreateGameFormProps> = ({ 
   onCreate, 
   onCancel, 
-  isLoading = false 
+  isLoading = false,
+  defaultName = '' 
 }) => {
-  const [hostName, setHostName] = useState('');
+  const [hostName, setHostName] = useState(defaultName);
   const [playerCap, setPlayerCap] = useState(4);
   const [difficulty, setDifficulty] = useState<'normal' | 'hard' | 'nightmare'>('normal');
   const [error, setError] = useState('');

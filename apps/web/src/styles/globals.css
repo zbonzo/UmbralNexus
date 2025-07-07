@@ -29,6 +29,18 @@
     --mage-color: 252 83% 57%;          /* #6366f1 - Blue for mage */
     --cleric-color: 45 93% 47%;         /* #f6ad55 - Yellow for cleric */
     
+    /* Hex grid sizing variables - FLAT-TOP hexagon with correct mathematical proportions */
+    --hex-side-length: 15px;                             /* Side length (s) */
+    --hex-total-width: calc(var(--hex-side-length) * 1.732); /* Width = s√3 ≈ 26px */
+    --hex-total-height: calc(var(--hex-side-length) * 2);     /* Height = 2s = 30px */
+    
+    /* Spacing for flat-top hexagon layout */
+    --hex-column-spacing: calc(var(--hex-total-width) * 0.75); /* 3/4 of width for proper tessellation */
+    --hex-row-spacing: calc(var(--hex-total-height) * 0.85);   /* Slightly more than 3/4 height for better spacing */
+    
+    /* The vertical offset for alternating columns (staggering) */
+    --hex-stagger-offset-y: calc(var(--hex-row-spacing) / 2); /* Half of row spacing */
+    
     --radius: 0.75rem;
   }
 
@@ -136,4 +148,246 @@
     background: rgba(15, 23, 42, 0.8);
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
+}
+
+/* Landing page specific styles */
+.join-card {
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+/* Input hover effects */
+input:hover:not(:disabled) {
+  border-color: hsl(var(--umbral-orange) / 0.5);
+}
+
+/* Better button transitions */
+button {
+  transition: all 0.2s ease;
+}
+
+/* Dice button animation */
+.dice-button:active {
+  transform: rotate(180deg);
+}
+
+/* Custom range slider styles */
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-track {
+  background: hsl(var(--border) / 0.2);
+  height: 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.slider::-moz-range-track {
+  background: hsl(var(--border) / 0.2);
+  height: 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background: hsl(var(--umbral-orange));
+  height: 1.25rem;
+  width: 1.25rem;
+  border-radius: 50%;
+  margin-top: -0.375rem;
+  transition: all 0.2s ease;
+}
+
+.slider::-moz-range-thumb {
+  background: hsl(var(--umbral-orange));
+  height: 1.25rem;
+  width: 1.25rem;
+  border-radius: 50%;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.slider:hover::-webkit-slider-thumb {
+  transform: scale(1.1);
+}
+
+.slider:hover::-moz-range-thumb {
+  transform: scale(1.1);
+}
+
+/* Game grid styles */
+.grid-cols-15 {
+  grid-template-columns: repeat(15, minmax(0, 1fr));
+}
+
+/* Hex grid container for centering */
+.hex-grid-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow: hidden; /* Prevent scrollbars from partial hexes */
+}
+
+/* Hex grid styles - flat-top hexagon tessellation */
+.hex-grid {
+  position: relative;
+  display: inline-flex; /* Use inline-flex to prevent full width */
+  flex-direction: row; /* Columns for flat-top layout */
+  align-items: flex-start;
+  gap: 0; /* No gap, we'll use margins */
+  /* Ensure proper alignment of columns */
+  margin: 0;
+  padding: 0;
+}
+
+.hex-column {
+  display: flex;
+  flex-direction: column;
+  /* Set column width to hex width */
+  width: var(--hex-total-width);
+  /* Add margin for proper column spacing (3/4 width spacing) */
+  margin-right: calc(var(--hex-column-spacing) - var(--hex-total-width));
+  /* Remove default gaps */
+  gap: 0;
+}
+
+/* Last column shouldn't have margin */
+.hex-column:last-child {
+  margin-right: 0;
+}
+
+/* Proper column staggering - odd columns get offset UP */
+.hex-column--odd {
+  /* Shift odd columns UP by half the vertical gap for perfect interlocking */
+  position: relative;
+  top: calc(var(--hex-stagger-offset-y) * -1);
+}
+
+.hex-tile {
+  /* Define the hexagon's actual dimensions */
+  width: var(--hex-total-width);
+  height: var(--hex-total-height);
+  
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  /* Add vertical spacing between hexes in same column */
+  margin-bottom: calc(var(--hex-row-spacing) - var(--hex-total-height));
+  
+  /* Flat-top hexagon clip-path - corrected */
+  clip-path: polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  
+  /* Add display: flex and centering for content inside */
+  display: flex; 
+  justify-content: center;
+  align-items: center;
+  
+  /* Ensure proper rendering */
+  flex-shrink: 0;
+  
+  /* Allow text overflow for coordinates */
+  overflow: visible;
+}
+
+/* Hex tile hover effects */
+.hex-tile:hover {
+  border-color: rgba(255, 107, 53, 0.8);
+  transform: scale(1.05);
+}
+
+/* Hex tile variants with colors applied directly */
+.hex-tile--floor {
+  background: rgb(15, 23, 42); /* Dark blue-gray floor */
+}
+
+.hex-tile--wall {
+  background: rgb(71, 85, 105); /* Gray walls */
+}
+
+.hex-tile--fog {
+  background: rgb(2, 6, 23); /* Very dark fog */
+}
+
+.hex-tile--movable {
+  background: rgb(30, 41, 59); /* Lighter blue for movable tiles */
+}
+
+.hex-tile--movable:hover {
+  background: rgb(51, 65, 85);
+}
+
+/* Color-coded entity tiles */
+.hex-tile--player {
+  background: rgb(34, 197, 94); /* Dark green for hero */
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+}
+
+.hex-tile--edge {
+  border-color: rgba(255, 107, 53, 0.5); /* Orange border for edge tiles */
+}
+
+.hex-tile--clicked {
+  background: rgb(255, 107, 53); /* Orange for clicked tiles */
+  box-shadow: 0 0 8px rgba(255, 107, 53, 0.6);
+}
+
+.hex-tile--correct {
+  background: rgb(34, 197, 94); /* Green for correct distances */
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+}
+
+.hex-tile--incorrect {
+  background: rgb(239, 68, 68); /* Red for incorrect distances */
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+  border-color: rgb(239, 68, 68);
+}
+
+.hex-tile--enemy {
+  background: rgb(220, 38, 38); /* Crimson red for enemies */
+  box-shadow: 0 0 6px rgba(220, 38, 38, 0.5);
+}
+
+.hex-tile--chest {
+  background: rgb(245, 158, 11); /* Gold for treasure */
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.4);
+}
+
+.hex-tile--ally {
+  background: rgb(59, 130, 246); /* Blue for allies */
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.4);
+}
+
+.hex-tile--item {
+  background: rgb(168, 85, 247); /* Purple for items */
+  box-shadow: 0 0 4px rgba(168, 85, 247, 0.3);
+}
+
+/* Absolute positioned hex grid */
+.hex-grid-absolute {
+  position: relative;
+  width: 500px;
+  height: 500px;
+}
+
+.hex-tile-absolute {
+  position: absolute;
+  width: var(--hex-total-width);
+  height: var(--hex-total-height);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  clip-path: polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  overflow: visible;
 }

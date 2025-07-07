@@ -29,7 +29,8 @@
       "Bash(curl:*)",
       "Bash(docker exec:*)",
       "Bash(sed:*)",
-      "Bash(touch:*)"
+      "Bash(touch:*)",
+      "Bash(npm run type-check:*)"
     ],
     "deny": []
   }

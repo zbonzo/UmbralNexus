@@ -149,10 +149,18 @@ class GameFlowManager {
       // TODO: Send character selection to server
       await new Promise(resolve => setTimeout(resolve, 1000)); // Mock delay
       
+      // Update the player's selected class in the players list
+      const updatedPlayers = state.players.map(player => 
+        player.playerId === state.currentPlayerId 
+          ? { ...player, selectedClass: state.selectedClass || undefined }
+          : player
+      );
+      
       // Navigate back to lobby with class selected
       useGameFlowStore.setState({ 
         currentPhase: 'lobby',
-        isLoading: false 
+        isLoading: false,
+        players: updatedPlayers
       });
       
     } catch (error) {

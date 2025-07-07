@@ -10,7 +10,8 @@ export const GameLobby: React.FC = () => {
     players, 
     maxPlayers, 
     isHost,
-    currentPlayerId
+    currentPlayerId,
+    gameConfig
   } = useGameFlowStore();
 
   const handleStartGame = () => {
@@ -62,7 +63,11 @@ export const GameLobby: React.FC = () => {
                       <div>
                         <p className="font-medium">{player.playerName}</p>
                         <p className="text-sm text-muted-foreground">
-                          {player.selectedClass ? `⚔️ ${player.selectedClass}` : 'No class selected'}
+                          {player.selectedClass === 'warrior' && '⚔️ Warrior'}
+                          {player.selectedClass === 'ranger' && '🏹 Ranger'}
+                          {player.selectedClass === 'mage' && '🔮 Mage'}
+                          {player.selectedClass === 'cleric' && '✨ Cleric'}
+                          {!player.selectedClass && 'No class selected'}
                         </p>
                       </div>
                     </div>
@@ -114,11 +119,11 @@ export const GameLobby: React.FC = () => {
             <CardContent className="space-y-4">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Difficulty:</span>
-                <span className="font-medium">Normal</span>
+                <span className="font-medium capitalize">{gameConfig?.difficulty || 'Normal'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Player Limit:</span>
-                <span className="font-medium">4 Players</span>
+                <span className="font-medium">{maxPlayers} Players</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Victory Condition:</span>
@@ -127,24 +132,29 @@ export const GameLobby: React.FC = () => {
               
               <div className="pt-4 border-t">
                 <h4 className="font-medium mb-2">Share Game</h4>
-                <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    value={gameId ? `Game ID: ${gameId}` : 'Loading...'}
-                    readOnly
-                    className="flex-1 h-10 px-3 py-2 text-sm border border-input bg-background rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      if (gameId) {
-                        navigator.clipboard.writeText(gameId);
-                      }
-                    }}
-                  >
-                    Copy
-                  </Button>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      value={gameId || 'Loading...'}
+                      readOnly
+                      className="flex-1 h-10 px-3 py-2 text-sm border border-input bg-background rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring font-mono tracking-wider text-center uppercase"
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        if (gameId) {
+                          navigator.clipboard.writeText(gameId);
+                        }
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Share this code with other players
+                  </p>
                 </div>
               </div>
             </CardContent>
