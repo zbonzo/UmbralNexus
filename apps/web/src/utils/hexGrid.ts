@@ -66,99 +66,100 @@ export const hexManhattanDistance = (start: HexCoordinate, target: HexCoordinate
   return (Math.abs(start.q - target.q) + Math.abs(start.q + start.r - target.q - target.r) + Math.abs(start.r - target.r)) / 2;
 };
 
-// Check if this grid is actually using a different connectivity pattern
-export const analyzeGridPattern = (): void => {
-  const origin = createHexCoordinate(0, 0);
-  console.log('=== ANALYZING GRID CONNECTIVITY PATTERN ===');
-  
-  // Test what the actual neighbors are
-  const testCoords = [
-    // All possible distance 1 candidates
-    createHexCoordinate(-1, -1),
-    createHexCoordinate(-1, 0),
-    createHexCoordinate(-1, 1),
-    createHexCoordinate(0, -1),
-    createHexCoordinate(0, 1),
-    createHexCoordinate(1, -1),
-    createHexCoordinate(1, 0),
-    createHexCoordinate(1, 1),
-  ];
-  
-  console.log('Testing which coordinates are actually distance 1:');
-  testCoords.forEach(coord => {
-    const dist = hexDistance(origin, coord);
-    const isNeighbor = hexNeighbors(origin).some(n => hexEquals(n, coord));
-    console.log(`(${coord.q},${coord.r}): distance=${dist}, isNeighbor=${isNeighbor}`);
-  });
-};
-
-// Calculate distance between two hex coordinates using BFS (breadth-first search)
-export const hexDistance = (start: HexCoordinate, target: HexCoordinate): number => {
+// Calculate straight-line distance (as the crow flies)
+// This ignores all obstacles and just counts the minimum hex steps
+export const hexStraightDistance = (start: HexCoordinate, target: HexCoordinate): number => {
   if (hexEquals(start, target)) return 0;
   
-  // First, let's test if it's a direct neighbor
-  const isDirectNeighbor = hexNeighbors(start).some(n => hexEquals(n, target));
-  if (isDirectNeighbor) return 1;
+  // Use the standard hex distance formula
+  const dq = target.q - start.q;
+  const dr = target.r - start.r;
+  const ds = target.s - start.s;
   
-  // Debug specific case - northwest neighbor
-  const isDebugCase = start.q === 0 && start.r === 0 && start.s === 0 && 
-                     target.q === -1 && target.r === 1 && target.s === 0;
+  return Math.max(Math.abs(dq), Math.abs(dr), Math.abs(ds));
+};
+
+// Check if there's line of sight between two hexes (can't go through walls)
+export const hasLineOfSight = (start: HexCoordinate, target: HexCoordinate, hexMap: HexMap): boolean => {
+  if (hexEquals(start, target)) return true;
   
-  if (isDebugCase) {
-    console.log(`=== BFS DEBUG: Finding distance from (${start.q},${start.r}) to (${target.q},${target.r}) ===`);
-    console.log(`Is direct neighbor? ${isDirectNeighbor}`);
-    console.log(`Mathematical distance: ${hexManhattanDistance(start, target)}`);
+  // Use Bresenham-like algorithm to trace a line through hex grid
+  const distance = hexStraightDistance(start, target);
+  
+  for (let i = 1; i < distance; i++) {
+    const t = i / distance;
+    // Interpolate position
+    const q = Math.round(start.q + (target.q - start.q) * t);
+    const r = Math.round(start.r + (target.r - start.r) * t);
+    const hex = createHexCoordinate(q, r);
+    
+    const tile = hexMap.getTile(hex);
+    if (!tile || tile.baseType === 'wall') {
+      return false; // Hit a wall
+    }
   }
+  
+  return true;
+};
+
+// Check if this grid is actually using a different connectivity pattern
+// Calculate walking distance between two hex coordinates using BFS (breadth-first search)
+// This version respects walls and obstacles - for movement
+export const hexWalkingDistance = (start: HexCoordinate, target: HexCoordinate, hexMap?: HexMap): number => {
+  if (hexEquals(start, target)) return 0;
   
   const visited = new Set<string>();
   const queue: { coord: HexCoordinate; distance: number }[] = [{ coord: start, distance: 0 }];
   visited.add(hexToKey(start));
   
-  let iteration = 0;
   while (queue.length > 0) {
     const current = queue.shift()!;
-    iteration++;
-    
-    if (isDebugCase) {
-      console.log(`Iteration ${iteration}: Processing (${current.coord.q},${current.coord.r}) at distance ${current.distance}`);
-    }
     
     // Check all neighbors
     const neighbors = hexNeighbors(current.coord);
     for (const neighbor of neighbors) {
       const key = hexToKey(neighbor);
       
-      if (isDebugCase) {
-        console.log(`  - Checking neighbor: (${neighbor.q},${neighbor.r})`);
-        console.log(`  - Is target? ${hexEquals(neighbor, target)}`);
-        console.log(`  - Already visited? ${visited.has(key)}`);
+      // Skip if already visited
+      if (visited.has(key)) continue;
+      
+      // If we have a map, check if the tile is walkable
+      if (hexMap) {
+        const tile = hexMap.getTile(neighbor);
+        // Skip if tile doesn't exist or is a wall
+        if (!tile || tile.baseType === 'wall') continue;
       }
       
       if (hexEquals(neighbor, target)) {
-        if (isDebugCase) console.log(`✓ Found target! Distance: ${current.distance + 1}`);
         return current.distance + 1;
       }
       
-      if (!visited.has(key)) {
-        visited.add(key);
-        queue.push({ coord: neighbor, distance: current.distance + 1 });
-        if (isDebugCase) {
-          console.log(`  - Added to queue at distance ${current.distance + 1}`);
-        }
-      }
+      visited.add(key);
+      queue.push({ coord: neighbor, distance: current.distance + 1 });
     }
     
     // Prevent infinite search
-    if (current.distance > 20) {
-      if (isDebugCase) console.log(`Breaking search - exceeded max distance`);
-      break;
-    }
+    if (current.distance > 50) break;
   }
   
   // If we can't reach the target, return a large number
-  if (isDebugCase) console.log(`✗ Could not reach target!`);
   return 999;
 };
+
+// Calculate ranged distance (for spells/arrows)
+// Can go over obstacles but not through walls
+export const hexRangedDistance = (start: HexCoordinate, target: HexCoordinate, hexMap: HexMap): number => {
+  // First check if we have line of sight
+  if (!hasLineOfSight(start, target, hexMap)) {
+    return 999; // Can't reach through walls
+  }
+  
+  // If we have line of sight, return straight distance
+  return hexStraightDistance(start, target);
+};
+
+// Backward compatibility - use walking distance by default
+export const hexDistance = hexWalkingDistance;
 
 // Get all hexes within a certain distance
 export const hexesInRange = (center: HexCoordinate, range: number): HexCoordinate[] => {

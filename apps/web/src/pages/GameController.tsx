@@ -20,9 +20,27 @@ const generateMockHexMap = (): HexMap => {
   const hexMap = new HexMap();
   const hexGrid = generateSquareHexGrid(7); // Square grid with proper honeycomb pattern
   
+  // Define some wall positions to create obstacles
+  const wallPositions = [
+    // Create a wall line from north to south
+    { q: 2, r: -2 },
+    { q: 2, r: -1 },
+    { q: 2, r: 0 },
+    { q: 2, r: 1 },
+    { q: 2, r: 2 },
+    // Create an L-shaped wall
+    { q: -2, r: -1 },
+    { q: -1, r: -1 },
+    { q: 0, r: -1 },
+    // Add some scattered walls
+    { q: -3, r: 2 },
+    { q: 1, r: 3 },
+  ];
+  
   hexGrid.forEach(coord => {
-    // Make all tiles floor type with no entities for testing
-    const tile = createHexTile(coord, 'floor', []);
+    // Check if this coordinate should be a wall
+    const isWall = wallPositions.some(wall => wall.q === coord.q && wall.r === coord.r);
+    const tile = createHexTile(coord, isWall ? 'wall' : 'floor', []);
     hexMap.setTile(tile);
   });
   
@@ -58,7 +76,7 @@ export const GameController: React.FC = () => {
     console.log('Direct neighbors (should all be distance 1):');
     expectedNeighbors.forEach((expected) => {
       const hex = createHexCoordinate(expected.q, expected.r);
-      const distance = hexDistance(origin, hex);
+      const distance = hexDistance(origin, hex, hexMap);
       console.log(`${expected.name}: (${expected.q},${expected.r}) = d:${distance} ${distance !== 1 ? '❌ WRONG!' : '✅'}`);
     });
     
@@ -70,7 +88,7 @@ export const GameController: React.FC = () => {
     testGrid.forEach(hex => {
       if (hexEquals(hex, origin)) return; // Skip origin
       
-      const actualDistance = hexDistance(origin, hex);
+      const actualDistance = hexDistance(origin, hex, hexMap);
       results.push({
         coord: `(${hex.q},${hex.r})`,
         actual: actualDistance
@@ -149,7 +167,7 @@ export const GameController: React.FC = () => {
       
       const key = hexToKey(hex);
       const manualDistance = hexClickCounts.get(key) || 0;
-      const calculatedDistance = hexDistance(origin, hex);
+      const calculatedDistance = hexDistance(origin, hex, hexMap);
       
       results.push({
         coord: `(${hex.q},${hex.r})`,
@@ -214,14 +232,18 @@ export const GameController: React.FC = () => {
               <div key={q} className={`hex-column ${isOddColumn ? 'hex-column--odd' : ''}`}>
                 {hexes.map(hex => {
                   const key = hexToKey(hex);
+                  const tile = hexMap.getTile(hex);
                   const isPlayer = hexEquals(hex, playerPos);
-                  const calculatedDistance = hexDistance(hex, playerPos);
+                  const isWall = tile?.baseType === 'wall';
+                  const calculatedDistance = isWall ? 999 : hexDistance(hex, playerPos, hexMap);
                   const manualDistance = hexClickCounts.get(key) || 0;
                   
                   let tileClass = 'hex-tile ';
                   
                   if (isPlayer) {
                     tileClass += 'hex-tile--player'; // Green for player position
+                  } else if (isWall) {
+                    tileClass += 'hex-tile--wall'; // Dark gray for walls
                   } else if (manualDistance === 0) {
                     tileClass += 'hex-tile--floor'; // Gray for not clicked yet
                   } else if (manualDistance === calculatedDistance) {
@@ -234,6 +256,8 @@ export const GameController: React.FC = () => {
                   let tooltipText = '';
                   if (isPlayer) {
                     tooltipText = `Player position (0,0)`;
+                  } else if (isWall) {
+                    tooltipText = `(${hex.q},${hex.r}) - WALL`;
                   } else {
                     tooltipText = `(${hex.q},${hex.r}) - Manual: ${manualDistance}, Calculated: ${calculatedDistance}`;
                   }
@@ -242,14 +266,15 @@ export const GameController: React.FC = () => {
                     <div
                       key={key}
                       className={tileClass}
-                      onClick={(e) => handleHexClick(hex, e)}
-                      onContextMenu={(e) => handleHexClick(hex, e)}
+                      onClick={(e) => !isWall && handleHexClick(hex, e)}
+                      onContextMenu={(e) => !isWall && handleHexClick(hex, e)}
                       title={tooltipText}
                     >
                       {/* Show coordinates and click count */}
                       <div className="flex flex-col items-center justify-center text-[6px] leading-tight opacity-70">
                         <span>{hex.q},{hex.r}</span>
-                        {!isPlayer && <span>clicks:{manualDistance}</span>}
+                        {!isPlayer && !isWall && <span>clicks:{manualDistance}</span>}
+                        {isWall && <span className="font-bold">WALL</span>}
                       </div>
                     </div>
                   );
