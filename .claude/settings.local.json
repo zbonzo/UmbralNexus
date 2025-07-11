@@ -30,7 +30,11 @@
       "Bash(docker exec:*)",
       "Bash(sed:*)",
       "Bash(touch:*)",
-      "Bash(npm run type-check:*)"
+      "Bash(npm run type-check:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(pkill:*)",
+      "Bash(rg:*)"
     ],
     "deny": []
   }

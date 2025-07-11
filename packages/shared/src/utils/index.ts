@@ -9,3 +9,6 @@ export * from './visibilityUtils';
 
 // Random number generation utilities
 export * from './randomUtils';
+
+// Input sanitization and validation utilities
+export * from './inputSanitization';

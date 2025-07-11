@@ -1,44 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGameFlowStore } from '../stores/gameFlowStore';
 import { gameFlowManager } from '../services/gameFlowManager';
 import { Button } from '../components/ui/button';
 import { 
   HexCoordinate, 
   generateSquareHexGrid, 
-  hexDistance, 
   hexEquals,
-  hexNeighbors,
-  HEX_DIRECTIONS,
-  HEX_DIRECTION_NAMES,
-  createHexCoordinate,
   HexMap,
+  createHexCoordinate,
   createHexTile,
   hexToKey
 } from '../utils/hexGrid';
 
 const generateMockHexMap = (): HexMap => {
   const hexMap = new HexMap();
-  const hexGrid = generateSquareHexGrid(7); // Square grid with proper honeycomb pattern
+  const hexGrid = generateSquareHexGrid(7);
   
-  // Define some wall positions to create obstacles
+  // Define some wall positions
   const wallPositions = [
-    // Create a wall line from north to south
     { q: 2, r: -2 },
     { q: 2, r: -1 },
     { q: 2, r: 0 },
     { q: 2, r: 1 },
     { q: 2, r: 2 },
-    // Create an L-shaped wall
     { q: -2, r: -1 },
     { q: -1, r: -1 },
     { q: 0, r: -1 },
-    // Add some scattered walls
     { q: -3, r: 2 },
     { q: 1, r: 3 },
   ];
   
   hexGrid.forEach(coord => {
-    // Check if this coordinate should be a wall
     const isWall = wallPositions.some(wall => wall.q === coord.q && wall.r === coord.r);
     const tile = createHexTile(coord, isWall ? 'wall' : 'floor', []);
     hexMap.setTile(tile);
@@ -48,168 +40,176 @@ const generateMockHexMap = (): HexMap => {
 };
 
 export const GameController: React.FC = () => {
-  const { gameId, selectedClass, currentPlayerName } = useGameFlowStore();
-  const [actionPoints, setActionPoints] = useState(3);
+  const { gameId, selectedClass, currentPlayerName, players, currentPlayerId } = useGameFlowStore();
+  const [selectedTarget, setSelectedTarget] = useState<{ id: string; type: 'player' | 'enemy' } | null>(null);
   const [selectedAbility, setSelectedAbility] = useState<string | null>(null);
-  const [health] = useState(selectedClass === 'warrior' ? 120 : selectedClass === 'cleric' ? 100 : selectedClass === 'ranger' ? 80 : 60);
-  const [playerPos] = useState<HexCoordinate>(createHexCoordinate(0, 0)); // Center of the hex grid
+  const [abilityCooldowns, setAbilityCooldowns] = useState<Record<string, number>>({});
   const [hexMap] = useState(generateMockHexMap());
-  const [hexClickCounts, setHexClickCounts] = useState<Map<string, number>>(new Map());
-  const [clickMultiplier, setClickMultiplier] = useState<number>(1);
-
-  // Comprehensive distance analysis
-  React.useEffect(() => {
-    const origin = createHexCoordinate(0, 0);
-    
-    console.log('=== COMPREHENSIVE DISTANCE ANALYSIS ===');
-    
-    // Define what we KNOW should be distance 1 (direct neighbors)
-    const expectedNeighbors = [
-      { q: 0, r: 1, name: 'north' },
-      { q: 1, r: 1, name: 'northeast' },
-      { q: 1, r: -1, name: 'southeast' },
-      { q: 0, r: -1, name: 'south' },
-      { q: -1, r: -1, name: 'southwest' },
-      { q: -1, r: 1, name: 'northwest' }
-    ];
-    
-    console.log('Direct neighbors (should all be distance 1):');
-    expectedNeighbors.forEach((expected) => {
-      const hex = createHexCoordinate(expected.q, expected.r);
-      const distance = hexDistance(origin, hex, hexMap);
-      console.log(`${expected.name}: (${expected.q},${expected.r}) = d:${distance} ${distance !== 1 ? '❌ WRONG!' : '✅'}`);
-    });
-    
-    // Just output raw data for manual analysis - no "expected" calculation
-    console.log('\n=== RAW DISTANCE DATA ===');
-    const testGrid = generateSquareHexGrid(3);
-    const results: Array<{coord: string, actual: number}> = [];
-    
-    testGrid.forEach(hex => {
-      if (hexEquals(hex, origin)) return; // Skip origin
-      
-      const actualDistance = hexDistance(origin, hex, hexMap);
-      results.push({
-        coord: `(${hex.q},${hex.r})`,
-        actual: actualDistance
+  const animationFrameRef = useRef<number>(0);
+  
+  // Mock enemies for testing
+  const [enemies] = useState([
+    { id: 'enemy1', name: 'Goblin', position: { x: 5, y: 5 }, health: 50, maxHealth: 50 },
+    { id: 'enemy2', name: 'Orc', position: { x: 15, y: 15 }, health: 80, maxHealth: 80 },
+  ]);
+  
+  // Find current player
+  const currentPlayer = players.find(p => p.playerId === currentPlayerId);
+  const currentPlayerPos = currentPlayer?.position 
+    ? createHexCoordinate(currentPlayer.position.x, currentPlayer.position.y)
+    : createHexCoordinate(0, 0);
+  
+  // Update cooldowns
+  useEffect(() => {
+    const updateCooldowns = () => {
+      const now = Date.now();
+      setAbilityCooldowns(prev => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach(abilityId => {
+          if (updated[abilityId] !== undefined && updated[abilityId] <= now) {
+            delete updated[abilityId];
+          }
+        });
+        return updated;
       });
-    });
+      animationFrameRef.current = requestAnimationFrame(updateCooldowns);
+    };
     
-    // Sort by coordinate for easier pattern recognition
-    results.sort((a, b) => {
-      const [aq, ar] = a.coord.match(/-?\d+/g)!.map(Number);
-      const [bq, br] = b.coord.match(/-?\d+/g)!.map(Number);
-      if (aq !== bq) return aq - bq;
-      return ar - br;
-    });
+    animationFrameRef.current = requestAnimationFrame(updateCooldowns);
     
-    console.log('All coordinates with their calculated distances:');
-    results.forEach(result => {
-      console.log(`${result.coord}: d:${result.actual}`);
-    });
-    
-    // Export for analysis
-    console.log('\n=== COPY THIS JSON FOR ANALYSIS ===');
-    console.log(JSON.stringify(results, null, 2));
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
   }, []);
-
+  
   const handleLeaveGame = () => {
     gameFlowManager.leaveGame();
   };
-
-  const handleMove = (direction: string | HexCoordinate) => {
-    if (actionPoints > 0) {
-      if (typeof direction === 'string') {
-        console.log('Moving', direction);
-      } else {
-        console.log('Moving to hex', direction);
+  
+  const handleHexClick = (hex: HexCoordinate) => {
+    // Check if clicking on a player or enemy
+    const clickedPlayer = players.find(p => 
+      p.position && p.position.x === hex.q && p.position.y === hex.r
+    );
+    
+    const clickedEnemy = enemies.find(e => 
+      e.position && Math.floor(e.position.x) === hex.q && Math.floor(e.position.y) === hex.r
+    );
+    
+    if (clickedPlayer && clickedPlayer.playerId !== currentPlayerId) {
+      // Target another player
+      setSelectedTarget({ id: clickedPlayer.playerId, type: 'player' });
+      gameFlowManager.sendPlayerAction({
+        type: 'SET_TARGET',
+        targetId: clickedPlayer.playerId,
+        targetType: 'player',
+      });
+    } else if (clickedEnemy) {
+      // Target an enemy
+      setSelectedTarget({ id: clickedEnemy.id, type: 'enemy' });
+      gameFlowManager.sendPlayerAction({
+        type: 'SET_TARGET',
+        targetId: clickedEnemy.id,
+        targetType: 'enemy',
+      });
+    } else {
+      // Move to empty hex
+      const tile = hexMap.getTile(hex);
+      if (tile && tile.baseType !== 'wall') {
+        gameFlowManager.sendPlayerAction({
+          type: 'MOVE_TO',
+          targetPosition: { x: hex.q, y: hex.r },
+        });
       }
-      setActionPoints(prev => prev - 1);
     }
   };
-
-  const handleHexClick = (hex: HexCoordinate, event: React.MouseEvent) => {
-    event.preventDefault();
-    const key = hexToKey(hex);
+  
+  const handleUseAbility = (abilityId: string) => {
+    if (abilityCooldowns[abilityId]) return; // On cooldown
     
-    if (event.type === 'contextmenu') {
-      // Right click - reset to 0
-      setHexClickCounts(prev => {
-        const newMap = new Map(prev);
-        newMap.delete(key);
-        return newMap;
+    if (selectedTarget) {
+      gameFlowManager.sendPlayerAction({
+        type: 'USE_ABILITY',
+        abilityId,
+        targetId: selectedTarget.id,
       });
-    } else {
-      // Left click - increment count by multiplier
-      setHexClickCounts(prev => {
-        const newMap = new Map(prev);
-        const currentCount = newMap.get(key) || 0;
-        newMap.set(key, currentCount + clickMultiplier);
-        return newMap;
-      });
-    }
-  };
-
-  const exportResults = () => {
-    const origin = createHexCoordinate(0, 0);
-    const testGrid = generateSquareHexGrid(4); // Larger grid for more data
-    const results: Array<{
-      coord: string,
-      q: number,
-      r: number,
-      manualDistance: number,
-      calculatedDistance: number,
-      isCorrect: boolean
-    }> = [];
-    
-    testGrid.forEach(hex => {
-      if (hexEquals(hex, origin)) return; // Skip origin
       
-      const key = hexToKey(hex);
-      const manualDistance = hexClickCounts.get(key) || 0;
-      const calculatedDistance = hexDistance(origin, hex, hexMap);
-      
-      results.push({
-        coord: `(${hex.q},${hex.r})`,
-        q: hex.q,
-        r: hex.r,
-        manualDistance,
-        calculatedDistance,
-        isCorrect: manualDistance === calculatedDistance
-      });
-    });
+      // Set local cooldown (will be synced from server)
+      const ability = getAbilities().find(a => a.id === abilityId);
+      if (ability) {
+        setAbilityCooldowns(prev => ({
+          ...prev,
+          [abilityId]: Date.now() + ability.cooldownTime,
+        }));
+      }
+    }
     
-    // Sort by manual distance for easier analysis
-    results.sort((a, b) => a.manualDistance - b.manualDistance);
-    
-    const correctCount = results.filter(r => r.isCorrect).length;
-    const totalCount = results.length;
-    
-    console.log('=== DISTANCE COMPARISON RESULTS ===');
-    console.log(`Accuracy: ${correctCount}/${totalCount} (${Math.round(correctCount/totalCount*100)}%)`);
-    console.log('\nDetailed comparison:');
-    results.forEach(result => {
-      const status = result.isCorrect ? '✅' : '❌';
-      console.log(`${result.coord}: manual=${result.manualDistance}, calculated=${result.calculatedDistance} ${status}`);
-    });
-    
-    console.log('\n=== COPY THIS JSON FOR ANALYSIS ===');
-    console.log(JSON.stringify(results, null, 2));
-    
-    // Also copy to clipboard if possible
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(JSON.stringify(results, null, 2));
-      alert('Results copied to clipboard!');
-    } else {
-      alert('Results logged to console - copy the JSON from there');
+    setSelectedAbility(null);
+  };
+  
+  const getAbilities = () => {
+    // Mock abilities based on class
+    switch (selectedClass) {
+      case 'warrior':
+        return [
+          { id: 'shield-bash', name: 'Shield Bash', icon: '🛡️', cooldownTime: 3000 },
+          { id: 'rallying-cry', name: 'Rally', icon: '📢', cooldownTime: 10000 },
+          { id: 'whirlwind', name: 'Whirlwind', icon: '🌪️', cooldownTime: 8000 },
+        ];
+      case 'ranger':
+        return [
+          { id: 'quick-shot', name: 'Quick Shot', icon: '🏹', cooldownTime: 2000 },
+          { id: 'mark-target', name: 'Mark', icon: '🎯', cooldownTime: 5000 },
+          { id: 'arrow-storm', name: 'Arrow Storm', icon: '🌧️', cooldownTime: 12000 },
+        ];
+      case 'mage':
+        return [
+          { id: 'frost-bolt', name: 'Frost Bolt', icon: '❄️', cooldownTime: 2500 },
+          { id: 'teleport', name: 'Teleport', icon: '✨', cooldownTime: 6000 },
+          { id: 'meteor', name: 'Meteor', icon: '☄️', cooldownTime: 15000 },
+        ];
+      case 'cleric':
+        return [
+          { id: 'heal', name: 'Heal', icon: '💚', cooldownTime: 2000 },
+          { id: 'blessing', name: 'Blessing', icon: '✨', cooldownTime: 8000 },
+          { id: 'sanctuary', name: 'Sanctuary', icon: '🛡️', cooldownTime: 20000 },
+        ];
+      default:
+        return [];
     }
   };
-
+  
   const renderHexGrid = () => {
     const viewRadius = 7;
     const visibleHexes = generateSquareHexGrid(viewRadius);
     
-    // Group hexes by column (q coordinate) for flat-top rendering
+    // Create maps for quick lookup
+    const playerPositions = new Map<string, typeof players[0]>();
+    const enemyPositions = new Map<string, typeof enemies[0]>();
+    
+    players.forEach(player => {
+      if (player.position) {
+        const key = hexToKey(createHexCoordinate(
+          Math.floor(player.position.x), 
+          Math.floor(player.position.y)
+        ));
+        playerPositions.set(key, player);
+      }
+    });
+    
+    enemies.forEach(enemy => {
+      if (enemy.position) {
+        const key = hexToKey(createHexCoordinate(
+          Math.floor(enemy.position.x), 
+          Math.floor(enemy.position.y)
+        ));
+        enemyPositions.set(key, enemy);
+      }
+    });
+    
+    // Group hexes by column
     const columnMap = new Map<number, HexCoordinate[]>();
     visibleHexes.forEach(hex => {
       if (!columnMap.has(hex.q)) {
@@ -218,7 +218,6 @@ export const GameController: React.FC = () => {
       columnMap.get(hex.q)!.push(hex);
     });
     
-    // Sort columns and sort hexes within each column
     const sortedColumns = Array.from(columnMap.entries())
       .sort(([a], [b]) => a - b)
       .map(([q, hexes]) => [q, hexes.sort((a, b) => a.r - b.r)] as const);
@@ -233,49 +232,71 @@ export const GameController: React.FC = () => {
                 {hexes.map(hex => {
                   const key = hexToKey(hex);
                   const tile = hexMap.getTile(hex);
-                  const isPlayer = hexEquals(hex, playerPos);
+                  const isCurrentPlayer = hexEquals(hex, currentPlayerPos);
+                  const playerOnTile = playerPositions.get(key);
+                  const enemyOnTile = enemyPositions.get(key);
                   const isWall = tile?.baseType === 'wall';
-                  const calculatedDistance = isWall ? 999 : hexDistance(hex, playerPos, hexMap);
-                  const manualDistance = hexClickCounts.get(key) || 0;
+                  const isTargeted = selectedTarget && (
+                    (selectedTarget.type === 'player' && playerOnTile?.playerId === selectedTarget.id) ||
+                    (selectedTarget.type === 'enemy' && enemyOnTile?.id === selectedTarget.id)
+                  );
                   
                   let tileClass = 'hex-tile ';
                   
-                  if (isPlayer) {
-                    tileClass += 'hex-tile--player'; // Green for player position
+                  if (isCurrentPlayer) {
+                    tileClass += 'hex-tile--player';
+                  } else if (enemyOnTile) {
+                    tileClass += 'hex-tile--enemy';
+                  } else if (playerOnTile) {
+                    tileClass += 'hex-tile--other-player';
                   } else if (isWall) {
-                    tileClass += 'hex-tile--wall'; // Dark gray for walls
-                  } else if (manualDistance === 0) {
-                    tileClass += 'hex-tile--floor'; // Gray for not clicked yet
-                  } else if (manualDistance === calculatedDistance) {
-                    tileClass += 'hex-tile--correct'; // Green for correct distance
+                    tileClass += 'hex-tile--wall';
                   } else {
-                    tileClass += 'hex-tile--incorrect'; // Red for incorrect distance
+                    tileClass += 'hex-tile--floor';
                   }
                   
-                  // Create tooltip text
-                  let tooltipText = '';
-                  if (isPlayer) {
-                    tooltipText = `Player position (0,0)`;
+                  if (isTargeted) {
+                    tileClass += ' hex-tile--targeted';
+                  }
+                  
+                  // Create tooltip
+                  let tooltipText = `(${hex.q},${hex.r})`;
+                  if (isCurrentPlayer) {
+                    tooltipText = `You - ${tooltipText}`;
+                  } else if (playerOnTile) {
+                    tooltipText = `${playerOnTile.playerName} - ${tooltipText}`;
+                  } else if (enemyOnTile) {
+                    tooltipText = `${enemyOnTile.name} - ${tooltipText}`;
                   } else if (isWall) {
-                    tooltipText = `(${hex.q},${hex.r}) - WALL`;
-                  } else {
-                    tooltipText = `(${hex.q},${hex.r}) - Manual: ${manualDistance}, Calculated: ${calculatedDistance}`;
+                    tooltipText = `Wall - ${tooltipText}`;
                   }
                   
                   return (
                     <div
                       key={key}
                       className={tileClass}
-                      onClick={(e) => !isWall && handleHexClick(hex, e)}
-                      onContextMenu={(e) => !isWall && handleHexClick(hex, e)}
+                      onClick={() => !isCurrentPlayer && handleHexClick(hex)}
                       title={tooltipText}
+                      style={{ cursor: isWall ? 'not-allowed' : 'pointer' }}
                     >
-                      {/* Show coordinates and click count */}
                       <div className="flex flex-col items-center justify-center text-[6px] leading-tight opacity-70">
-                        <span>{hex.q},{hex.r}</span>
-                        {!isPlayer && !isWall && <span>clicks:{manualDistance}</span>}
+                        {isCurrentPlayer && <span className="text-xs font-bold">YOU</span>}
+                        {playerOnTile && !isCurrentPlayer && (
+                          <span className="text-[8px] font-medium">{playerOnTile.playerName.slice(0, 3)}</span>
+                        )}
+                        {enemyOnTile && (
+                          <span className="text-[8px] font-bold text-red-300">{enemyOnTile.name.slice(0, 3)}</span>
+                        )}
                         {isWall && <span className="font-bold">WALL</span>}
                       </div>
+                      {enemyOnTile && (
+                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/50 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-red-500 transition-all duration-300"
+                            style={{ width: `${(enemyOnTile.health / enemyOnTile.maxHealth) * 100}%` }}
+                          />
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -286,15 +307,9 @@ export const GameController: React.FC = () => {
       </div>
     );
   };
-
-  const handleUseAbility = (ability: string) => {
-    if (actionPoints >= 1) {
-      console.log('Using ability:', ability);
-      setActionPoints(prev => prev - 1);
-      setSelectedAbility(null);
-    }
-  };
-
+  
+  const abilities = getAbilities();
+  
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="flex flex-col lg:flex-row h-screen">
@@ -312,37 +327,21 @@ export const GameController: React.FC = () => {
               </Button>
             </div>
 
-            {/* Local Hex Game View */}
+            {/* Game Map View */}
             <div className="bg-card/50 rounded-lg p-4 border border-border/50">
               <div className="flex justify-between items-center mb-2">
-                <h2 className="text-sm font-medium text-muted-foreground">Distance Testing Grid</h2>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={exportResults}
-                  className="text-xs"
-                >
-                  Export Results
-                </Button>
+                <h2 className="text-sm font-medium text-muted-foreground">Real-Time Battle Arena</h2>
+                {selectedTarget && (
+                  <div className="text-xs text-umbral-orange">
+                    Target: {selectedTarget.type === 'player' ? 
+                      players.find(p => p.playerId === selectedTarget.id)?.playerName :
+                      enemies.find(e => e.id === selectedTarget.id)?.name
+                    }
+                  </div>
+                )}
               </div>
               <div className="text-xs text-muted-foreground mb-2">
-                Left click = add {clickMultiplier} to distance, Right click = reset to 0
-              </div>
-              <div className="mb-3">
-                <div className="text-xs text-muted-foreground mb-1">Click value:</div>
-                <div className="flex gap-1 flex-wrap">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                    <Button
-                      key={num}
-                      variant={clickMultiplier === num ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setClickMultiplier(num)}
-                      className="w-10 h-8 p-0 text-xs"
-                    >
-                      {num}
-                    </Button>
-                  ))}
-                </div>
+                Click to move • Click enemy/player to target • Use abilities on target
               </div>
               <div className="max-w-lg mx-auto bg-black rounded-lg p-6 overflow-hidden">
                 {renderHexGrid()}
@@ -350,19 +349,19 @@ export const GameController: React.FC = () => {
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <div className="hex-tile hex-tile--player" style={{width: 'calc(var(--hex-total-width) / 2)', height: 'calc(var(--hex-total-height) / 2)', flexShrink: 0}}></div>
-                  <span>Origin (0,0)</span>
+                  <span>You</span>
                 </span>
                 <span className="flex items-center gap-1">
-                  <div className="hex-tile hex-tile--floor" style={{width: 'calc(var(--hex-total-width) / 2)', height: 'calc(var(--hex-total-height) / 2)', flexShrink: 0}}></div>
-                  <span>Not Set</span>
+                  <div className="hex-tile hex-tile--other-player" style={{width: 'calc(var(--hex-total-width) / 2)', height: 'calc(var(--hex-total-height) / 2)', flexShrink: 0}}></div>
+                  <span>Other Players</span>
                 </span>
                 <span className="flex items-center gap-1">
-                  <div className="hex-tile hex-tile--correct" style={{width: 'calc(var(--hex-total-width) / 2)', height: 'calc(var(--hex-total-height) / 2)', flexShrink: 0}}></div>
-                  <span>Correct</span>
+                  <div className="hex-tile hex-tile--enemy" style={{width: 'calc(var(--hex-total-width) / 2)', height: 'calc(var(--hex-total-height) / 2)', flexShrink: 0}}></div>
+                  <span>Enemies</span>
                 </span>
                 <span className="flex items-center gap-1">
-                  <div className="hex-tile hex-tile--incorrect" style={{width: 'calc(var(--hex-total-width) / 2)', height: 'calc(var(--hex-total-height) / 2)', flexShrink: 0}}></div>
-                  <span>Incorrect</span>
+                  <div className="hex-tile hex-tile--wall" style={{width: 'calc(var(--hex-total-width) / 2)', height: 'calc(var(--hex-total-height) / 2)', flexShrink: 0}}></div>
+                  <span>Wall</span>
                 </span>
               </div>
             </div>
@@ -371,7 +370,7 @@ export const GameController: React.FC = () => {
 
         {/* Controls Section */}
         <div className="w-full lg:w-96 bg-card/95 p-4 lg:border-l border-border/50 overflow-y-auto">
-          {/* Player Status - Compact */}
+          {/* Player Status */}
           <div className="mb-4 p-3 bg-muted/20 rounded-lg">
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-medium">
@@ -381,99 +380,83 @@ export const GameController: React.FC = () => {
                 {selectedClass === 'cleric' && '✨ Cleric'}
                 {!selectedClass && '❓ No Class'}
               </h3>
-              <span className="text-sm font-medium text-umbral-orange">AP: {actionPoints}/3</span>
+              <span className="text-sm text-muted-foreground">Real-Time</span>
             </div>
             <div className="space-y-1">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Health</span>
-                <span>{health}/{health}</span>
+                <span>{currentPlayer?.health || 100}/{currentPlayer?.maxHealth || 100}</span>
               </div>
               <div className="w-full bg-muted-foreground/20 rounded-full h-1.5">
                 <div 
                   className="bg-green-500 h-1.5 rounded-full transition-all duration-300" 
-                  style={{ width: '100%' }}
+                  style={{ width: `${((currentPlayer?.health || 100) / (currentPlayer?.maxHealth || 100)) * 100}%` }}
                 />
               </div>
             </div>
           </div>
 
-          {/* Hex Movement Controls */}
-          <div className="mb-4">
-            <h3 className="text-sm font-medium mb-2">Movement (1 AP)</h3>
-            <div className="relative w-32 h-32 mx-auto">
-              {/* Center AP display */}
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-muted/20 rounded-full flex items-center justify-center text-xs text-muted-foreground border">
-                {actionPoints}
+          {/* Target Info */}
+          {selectedTarget && (
+            <div className="mb-4 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+              <h3 className="text-sm font-medium text-red-400 mb-1">Current Target</h3>
+              <div className="text-xs text-muted-foreground">
+                {selectedTarget.type === 'player' ? 
+                  players.find(p => p.playerId === selectedTarget.id)?.playerName :
+                  enemies.find(e => e.id === selectedTarget.id)?.name
+                }
               </div>
-              
-              {/* Six hex direction buttons */}
-              {HEX_DIRECTIONS.map((_, index) => {
-                // For flat-top hexagons, adjust angles to match the new orientation
-                const angle = (index * 60) - 60; // Start from northeast, rotate 60° each
-                const radian = (angle * Math.PI) / 180;
-                const radius = 40;
-                const x = Math.cos(radian) * radius;
-                const y = Math.sin(radian) * radius;
-                
-                // Update symbols for flat-top orientation
-                const directionSymbols = ['→', '↗', '↖', '←', '↙', '↘'];
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-2 w-full"
+                onClick={() => {
+                  setSelectedTarget(null);
+                  gameFlowManager.sendPlayerAction({
+                    type: 'SET_TARGET',
+                    targetId: null,
+                    targetType: 'player',
+                  });
+                }}
+              >
+                Clear Target
+              </Button>
+            </div>
+          )}
+
+          {/* Abilities */}
+          <div className="mb-4">
+            <h3 className="text-sm font-medium mb-2">Abilities</h3>
+            <div className="grid grid-cols-3 gap-2">
+              {abilities.map((ability) => {
+                const isOnCooldown = (abilityCooldowns[ability.id] || 0) > Date.now();
+                const cooldownRemaining = Math.max(0, (abilityCooldowns[ability.id] || 0) - Date.now());
+                const cooldownSeconds = Math.ceil(cooldownRemaining / 1000);
                 
                 return (
                   <Button
-                    key={index}
-                    variant="outline"
-                    size="sm"
-                    className="absolute w-8 h-8 transform -translate-x-1/2 -translate-y-1/2"
-                    style={{
-                      left: `calc(50% + ${x}px)`,
-                      top: `calc(50% + ${y}px)`
-                    }}
-                    onClick={() => handleMove(HEX_DIRECTION_NAMES[index] || 'unknown')}
-                    disabled={actionPoints === 0}
-                    title={HEX_DIRECTION_NAMES[index]}
+                    key={ability.id}
+                    variant={selectedAbility === ability.id ? 'default' : 'outline'}
+                    className="p-2 h-20 flex flex-col items-center justify-center gap-1 relative"
+                    onClick={() => handleUseAbility(ability.id)}
+                    disabled={isOnCooldown || !selectedTarget}
                   >
-                    {directionSymbols[index]}
+                    <span className="text-2xl">{ability.icon}</span>
+                    <span className="text-xs">{ability.name}</span>
+                    {isOnCooldown && (
+                      <span className="absolute inset-0 bg-black/50 rounded flex items-center justify-center text-xs font-bold">
+                        {cooldownSeconds}s
+                      </span>
+                    )}
                   </Button>
                 );
               })}
             </div>
-          </div>
-
-          {/* Abilities - Compact Grid */}
-          <div className="mb-4">
-            <h3 className="text-sm font-medium mb-2">Abilities</h3>
-            <div className="grid grid-cols-3 gap-2">
-              <Button 
-                variant={selectedAbility === 'shield-bash' ? 'default' : 'outline'}
-                className="p-2 h-20 flex flex-col items-center justify-center gap-1"
-                onClick={() => handleUseAbility('shield-bash')}
-                disabled={actionPoints === 0}
-              >
-                <span className="text-2xl">🛡️</span>
-                <span className="text-xs">Shield Bash</span>
-                <span className="text-xs text-muted-foreground">1 AP</span>
-              </Button>
-              <Button 
-                variant={selectedAbility === 'rallying-cry' ? 'default' : 'outline'}
-                className="p-2 h-20 flex flex-col items-center justify-center gap-1"
-                onClick={() => handleUseAbility('rallying-cry')}
-                disabled={actionPoints < 2}
-              >
-                <span className="text-2xl">📢</span>
-                <span className="text-xs">Rally</span>
-                <span className="text-xs text-muted-foreground">2 AP</span>
-              </Button>
-              <Button 
-                variant={selectedAbility === 'whirlwind' ? 'default' : 'outline'}
-                className="p-2 h-20 flex flex-col items-center justify-center gap-1"
-                onClick={() => handleUseAbility('whirlwind')}
-                disabled={actionPoints < 3}
-              >
-                <span className="text-2xl">🌪️</span>
-                <span className="text-xs">Whirlwind</span>
-                <span className="text-xs text-muted-foreground">3 AP</span>
-              </Button>
-            </div>
+            {!selectedTarget && (
+              <div className="text-xs text-muted-foreground mt-2">
+                Select a target to use abilities
+              </div>
+            )}
           </div>
 
           {/* Quick Actions */}
@@ -487,12 +470,6 @@ export const GameController: React.FC = () => {
                 <span className="mr-1">📍</span> Ping
               </Button>
             </div>
-          </div>
-
-          {/* Turn Timer */}
-          <div className="mt-4 p-3 bg-muted/20 rounded-lg text-center">
-            <span className="text-xs text-muted-foreground">Turn Timer</span>
-            <div className="text-2xl font-bold text-umbral-orange">0:30</div>
           </div>
         </div>
       </div>

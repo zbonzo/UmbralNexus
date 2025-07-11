@@ -1,22 +1,31 @@
-import { GameClient } from './gameClient';
+import { ApiClient } from './apiClient';
+import { RealTimeClient } from './realTimeClient';
 import { useGameFlowStore, PlayerReadyState } from '../stores/gameFlowStore';
-import type { GameConfig, Player, GameState } from '@umbral-nexus/shared';
+import type { GameState } from '@umbral-nexus/shared';
 
 class GameFlowManager {
-  private gameClient: GameClient;
+  private apiClient: ApiClient;
+  private realTimeClient: RealTimeClient;
   private store = useGameFlowStore.getState;
   private unsubscribe?: () => void;
+  private currentGameId: string | null = null;
+  private currentPlayerId: string | null = null;
 
   constructor() {
-    this.gameClient = new GameClient();
+    this.apiClient = new ApiClient();
+    this.realTimeClient = new RealTimeClient();
     this.setupEventHandlers();
   }
 
   private setupEventHandlers() {
-    // Listen to game client events
-    this.gameClient.onGameStateUpdate(this.handleGameStateUpdate.bind(this));
-    this.gameClient.onPlayerJoined(this.handlePlayerJoined.bind(this));
-    this.gameClient.onError(this.handleGameError.bind(this));
+    // Listen to real-time client events
+    this.realTimeClient.on('game-state', this.handleGameStateUpdate.bind(this));
+    this.realTimeClient.on('player-joined', this.handlePlayerJoined.bind(this));
+    this.realTimeClient.on('player-left', this.handlePlayerLeft.bind(this));
+    this.realTimeClient.on('error', this.handleGameError.bind(this));
+    this.realTimeClient.on('connection-acknowledged', this.handleConnectionAcknowledged.bind(this));
+    this.realTimeClient.on('game-started', this.handleGameStarted.bind(this));
+    this.realTimeClient.on('player-position', this.handlePlayerPositionUpdate.bind(this));
 
     // Subscribe to store changes to trigger side effects
     let previousPhase: string | null = null;
@@ -55,20 +64,36 @@ class GameFlowManager {
     store.startGameCreation(config);
     
     try {
-      // Skip backend connection for now - use mock mode
-      console.log('Creating game in mock mode...');
+      // Connect to real-time server
+      await this.realTimeClient.connect();
       
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Generate unique player ID
+      const hostId = `host_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      this.currentPlayerId = hostId;
       
-      // Generate mock game ID
-      const gameId = this.generateGameId();
+      // Create game via API
+      const gameInfo = await this.apiClient.createGame({
+        name: `${config.hostName}'s Game`,
+        hostId,
+        hostName: config.hostName,
+        playerCap: config.playerCap,
+        difficulty: config.difficulty as 'normal' | 'hard' | 'nightmare',
+        endConditions: {
+          type: 'TIME_LIMIT',
+          value: 3600, // 1 hour default
+        },
+      });
       
-      // Mock some initial lobby data
+      this.currentGameId = gameInfo.gameId;
+      
+      // Join the game room via WebSocket
+      await this.realTimeClient.joinGame(gameInfo.gameId, hostId, config.hostName);
+      
+      // Update store with game info
       store.joinedLobby({
-        gameId,
+        gameId: gameInfo.gameId,
         players: [{
-          playerId: 'host-player-id',
+          playerId: hostId,
           playerName: config.hostName,
           isReady: false,
           isHost: true
@@ -79,11 +104,12 @@ class GameFlowManager {
       
       // Set current player
       useGameFlowStore.setState({ 
-        currentPlayerId: 'host-player-id',
+        currentPlayerId: hostId,
         currentPlayerName: config.hostName 
       });
       
     } catch (error) {
+      console.error('Error creating game:', error);
       store.setError(error instanceof Error ? error.message : 'Failed to create game');
     }
   }
@@ -93,40 +119,48 @@ class GameFlowManager {
     store.startJoiningGame(gameId, playerName);
     
     try {
-      // Skip backend connection for now - use mock mode
-      console.log('Joining game in mock mode...');
+      // Connect to real-time server
+      await this.realTimeClient.connect();
       
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      // Generate unique player ID
+      const playerId = `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      this.currentPlayerId = playerId;
+      this.currentGameId = gameId;
       
-      // Mock joining an existing lobby
-      const mockPlayerId = `player-${Date.now()}`;
-      store.joinedLobby({
+      // Join game via API (with default warrior class for now)
+      const gameInfo = await this.apiClient.joinGame({
         gameId,
-        players: [
-          {
-            playerId: 'host-player-id',
-            playerName: 'Host Player',
-            isReady: false,
-            isHost: true
-          },
-          {
-            playerId: mockPlayerId,
-            playerName,
-            isReady: false,
-            isHost: false
-          }
-        ],
-        maxPlayers: 4,
-        isHost: false
+        playerId,
+        name: playerName,
+        class: 'warrior', // Default for now, can be changed in character selection
+      });
+      
+      // Join the game room via WebSocket
+      await this.realTimeClient.joinGame(gameId, playerId, playerName);
+      
+      // Convert API response to store format
+      const players: PlayerReadyState[] = gameInfo.players.map(player => ({
+        playerId: player.playerId,
+        playerName: player.name,
+        isReady: false, // Will be managed separately
+        isHost: player.playerId === gameInfo.host,
+        selectedClass: player.class,
+      }));
+      
+      store.joinedLobby({
+        gameId: gameInfo.gameId,
+        players,
+        maxPlayers: gameInfo.config.playerCap,
+        isHost: playerId === gameInfo.host
       });
       
       useGameFlowStore.setState({ 
-        currentPlayerId: mockPlayerId,
+        currentPlayerId: playerId,
         currentPlayerName: playerName 
       });
       
     } catch (error) {
+      console.error('Error joining game:', error);
       store.setError(error instanceof Error ? error.message : 'Failed to join game');
     }
   }
@@ -186,10 +220,22 @@ class GameFlowManager {
     }
   }
 
-  leaveGame() {
-    this.gameClient.disconnect();
+  async leaveGame() {
+    if (this.currentGameId && this.currentPlayerId) {
+      try {
+        await this.apiClient.leaveGame(this.currentGameId, this.currentPlayerId);
+        await this.realTimeClient.leaveGame();
+      } catch (error) {
+        console.error('Error leaving game:', error);
+      }
+    }
+    
+    this.realTimeClient.disconnect();
+    this.currentGameId = null;
+    this.currentPlayerId = null;
     this.store().returnToLanding();
   }
+
 
   // Private handlers
   private async handleGameCreation() {
@@ -223,39 +269,87 @@ class GameFlowManager {
     useGameFlowStore.setState({ players });
   }
 
-  private handlePlayerJoined(player: Player) {
-    console.log('Player joined:', player);
+  private handlePlayerJoined(data: { playerId: string; playerName: string; timestamp: string }) {
+    console.log('Player joined:', data);
     
     const playerState: PlayerReadyState = {
-      playerId: player.playerId,
-      playerName: player.name,
+      playerId: data.playerId,
+      playerName: data.playerName,
       isReady: false,
-      selectedClass: player.class,
       isHost: false
     };
     
     this.store().addPlayer(playerState);
   }
 
-  private handleGameError(error: any) {
+  private handlePlayerLeft(data: { playerId: string; timestamp: string }) {
+    console.log('Player left:', data);
+    
+    // Remove player from store
+    const currentState = this.store();
+    const updatedPlayers = currentState.players.filter(p => p.playerId !== data.playerId);
+    
+    useGameFlowStore.setState({ players: updatedPlayers });
+  }
+
+  private handleConnectionAcknowledged(data: { playerId: string; gameId: string; timestamp: string }) {
+    console.log('Connection acknowledged:', data);
+    // Connection successful - any additional setup can go here
+  }
+
+  private handleGameStarted(data: { gameId: string; startTime: number; timestamp: string }) {
+    console.log('Game started:', data);
+    useGameFlowStore.setState({ 
+      currentPhase: 'in-game',
+      isLoading: false 
+    });
+  }
+
+  private handleGameError(error: { message: string; details?: any }) {
     console.error('Game error:', error);
     this.store().setError(error.message || 'An unexpected error occurred');
   }
 
+  private handlePlayerPositionUpdate(data: { playerId: string; position: { floor: number; x: number; y: number }; actionPoints?: number }) {
+    console.log('Player position update:', data);
+    
+    // Update the specific player's position in the game state
+    const currentState = this.store();
+    const updatedPlayers = currentState.players.map(player => {
+      if (player.playerId === data.playerId) {
+        return {
+          ...player,
+          position: data.position,
+          actionPoints: data.actionPoints !== undefined ? data.actionPoints : player.actionPoints
+        };
+      }
+      return player;
+    });
+    
+    useGameFlowStore.setState({ players: updatedPlayers });
+  }
+
   // Helper methods
-  private generateGameId(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
-    for (let i = 0; i < 6; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
+
+  // Public method to send player actions
+  sendPlayerAction(action: { type: 'MOVE_TO'; targetPosition: { x: number; y: number } } | 
+                          { type: 'SET_TARGET'; targetId: string | null; targetType: 'player' | 'enemy' } |
+                          { type: 'USE_ABILITY'; abilityId: string; targetId?: string; targetPosition?: { x: number; y: number } } |
+                          { type: 'USE_ITEM'; itemId: string } |
+                          { type: 'STOP_MOVING' }) {
+    if (!this.realTimeClient.isConnected()) {
+      throw new Error('Not connected to game server');
     }
-    return result;
+    
+    this.realTimeClient.sendPlayerAction(action);
   }
 
   // Cleanup
   destroy() {
     this.unsubscribe?.();
-    this.gameClient.disconnect();
+    this.realTimeClient.disconnect();
+    this.currentGameId = null;
+    this.currentPlayerId = null;
   }
 }
 

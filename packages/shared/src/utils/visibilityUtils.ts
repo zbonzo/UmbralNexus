@@ -1,35 +1,54 @@
 import type { Position, Tile } from '../types/game';
 import { calculateDistance, positionsEqual } from './coordinateUtils';
+import { CLASS_MODIFIERS, LEVEL_PROGRESSION } from '../constants';
 
 /**
- * Calculate visibility range for a character class
- * @param characterClass Character class
- * @param level Character level
+ * Calculates the visibility range for a character class based on their role and level.
+ * 
+ * Base visibility ranges reflect class roles:
+ * - Warrior: 3 tiles (melee focus, limited scouting)
+ * - Ranger: 5 tiles (scout role, enhanced vision)
+ * - Mage: 4 tiles (balanced magical awareness)
+ * - Cleric: 4 tiles (support role needs good awareness)
+ * 
+ * Level progression: +1 tile every 5 levels to reward advancement
+ * 
+ * @param characterClass - The player's chosen class
+ * @param level - Current character level
  * @returns Visibility range in tiles
+ * 
+ * @example
+ * ```ts
+ * getVisibilityRange('ranger', 10); // Returns 7 (5 base + 2 level bonus)
+ * ```
  */
 export function getVisibilityRange(characterClass: string, level: number): number {
-  const baseRange: Record<string, number> = {
-    warrior: 3,  // Short range, focused on close combat
-    ranger: 5,   // Long range, scouting ability
-    mage: 4,     // Medium range
-    cleric: 4,   // Medium range
-  };
+  const base = (CLASS_MODIFIERS.VISIBILITY_RANGE as any)[characterClass] || 
+               CLASS_MODIFIERS.VISIBILITY_RANGE.warrior;
   
-  const base = baseRange[characterClass] || 3;
-  
-  // Increase by 1 every 5 levels
-  const levelBonus = Math.floor(level / 5);
+  // Level bonus
+  const levelBonus = Math.floor(level / LEVEL_PROGRESSION.VISIBILITY_BONUS_INTERVAL) * 
+                     LEVEL_PROGRESSION.VISIBILITY_BONUS_AMOUNT;
   
   return base + levelBonus;
 }
 
 /**
- * Calculate which tiles are visible from a position using simple radius
- * @param position Observer position
- * @param range Visibility range
- * @param mapWidth Map width in tiles
- * @param mapHeight Map height in tiles
- * @returns Array of visible positions
+ * Calculates all tiles within visibility range using a simple circular radius.
+ * 
+ * This function provides basic fog of war by determining which tiles
+ * are within the observer's sight range. It doesn't account for obstacles
+ * blocking line of sight - use calculateLineOfSightVisibility() for that.
+ * 
+ * Performance: O(range²) - consider caching for static observers
+ * 
+ * @param position - Observer's current position
+ * @param range - Maximum visibility distance
+ * @param mapWidth - Total map width to prevent out-of-bounds
+ * @param mapHeight - Total map height to prevent out-of-bounds
+ * @returns Array of positions within visibility range
+ * 
+ * @see calculateLineOfSightVisibility For vision with obstacle blocking
  */
 export function calculateVisibleTiles(
   position: Position,
@@ -53,11 +72,29 @@ export function calculateVisibleTiles(
 }
 
 /**
- * Check if there's line of sight between two positions
- * @param from Starting position
- * @param to Target position
- * @param tiles Map tiles (2D array)
- * @returns True if there's line of sight
+ * Determines if there's an unobstructed line of sight between two positions.
+ * 
+ * Uses Bresenham's line algorithm to trace a path between points,
+ * checking each tile for vision-blocking obstacles (walls).
+ * 
+ * Used for:
+ * - Ranged attack validation
+ * - Spell targeting
+ * - AI target acquisition
+ * - Fog of war calculations
+ * 
+ * @param from - Observer position
+ * @param to - Target position to check
+ * @param tiles - 2D array of map tiles (tiles[y][x])
+ * @returns `true` if path is unobstructed, `false` if blocked
+ * 
+ * @example
+ * ```ts
+ * // Can the archer shoot the enemy?
+ * if (hasLineOfSight(archer.position, enemy.position, mapTiles)) {
+ *   performRangedAttack(archer, enemy);
+ * }
+ * ```
  */
 export function hasLineOfSight(
   from: Position,
@@ -100,11 +137,22 @@ export function hasLineOfSight(
 }
 
 /**
- * Calculate which tiles are visible using line of sight
- * @param position Observer position
- * @param range Visibility range
- * @param tiles Map tiles
- * @returns Array of visible positions
+ * Calculates visible tiles considering both range and line-of-sight blocking.
+ * 
+ * This is the main visibility function for fog of war. It:
+ * 1. Gets all tiles within range (circular area)
+ * 2. Filters out tiles blocked by walls using raycasting
+ * 3. Returns only tiles with clear line of sight
+ * 
+ * Performance considerations:
+ * - O(range² × averageRayLength) complexity
+ * - Consider caching results for stationary units
+ * - Use spatial partitioning for large maps
+ * 
+ * @param position - Observer's position
+ * @param range - Maximum visibility distance
+ * @param tiles - Map tile data including walls
+ * @returns Array of positions that are both in range and unobstructed
  */
 export function calculateLineOfSightVisibility(
   position: Position,
@@ -129,12 +177,34 @@ export function calculateLineOfSightVisibility(
 }
 
 /**
- * Update visibility for a player's movement
- * @param playerPosition New player position
- * @param characterClass Player's character class
- * @param level Player's level
- * @param tiles Current map tiles
- * @returns Updated tiles with visibility information
+ * Updates the fog of war when a player moves to a new position.
+ * 
+ * This function manages two visibility states:
+ * - `isVisible`: Currently visible to the player (bright)
+ * - `isExplored`: Previously seen but not currently visible (dim)
+ * 
+ * The fog of war has three states:
+ * 1. Unexplored (black) - Never seen
+ * 2. Explored (dim) - Seen before but not currently visible
+ * 3. Visible (bright) - Currently in line of sight
+ * 
+ * @param playerPosition - Player's new position after movement
+ * @param characterClass - Class determines base visibility range
+ * @param level - Level provides visibility bonuses
+ * @param tiles - Current map state to update
+ * @returns New tile array with updated visibility flags
+ * 
+ * @example
+ * ```ts
+ * // Update fog of war after player moves
+ * const newTiles = updatePlayerVisibility(
+ *   player.position,
+ *   player.class,
+ *   player.level,
+ *   currentMapTiles
+ * );
+ * setMapTiles(newTiles);
+ * ```
  */
 export function updatePlayerVisibility(
   playerPosition: Position,
@@ -173,13 +243,23 @@ export function updatePlayerVisibility(
 }
 
 /**
- * Check if a position is visible to any player in a group
- * @param position Position to check
- * @param playerPositions Array of player positions
- * @param characterClasses Array of character classes (same order as positions)
- * @param levels Array of player levels (same order as positions)
- * @param tiles Map tiles
- * @returns True if position is visible to any player
+ * Checks if a position is visible to any player in a cooperative group.
+ * 
+ * Used for shared vision in co-op gameplay where the party shares
+ * information. If any player can see a position, it's revealed to all.
+ * 
+ * Common uses:
+ * - Enemy visibility on shared screen
+ * - Treasure/secret detection
+ * - Trap warnings
+ * - Shared minimap updates
+ * 
+ * @param position - Position to check visibility for
+ * @param playerPositions - All player positions in the group
+ * @param characterClasses - Classes array (must match playerPositions order)
+ * @param levels - Levels array (must match playerPositions order)
+ * @param tiles - Map data for line-of-sight checks
+ * @returns `true` if ANY player can see the position
  */
 export function isVisibleToAnyPlayer(
   position: Position,
@@ -205,12 +285,31 @@ export function isVisibleToAnyPlayer(
 }
 
 /**
- * Get shared visibility for a group of players (union of all visible areas)
- * @param playerPositions Array of player positions
- * @param characterClasses Array of character classes
- * @param levels Array of player levels
- * @param tiles Map tiles
- * @returns Array of positions visible to at least one player
+ * Calculates the union of all players' visible areas for shared vision.
+ * 
+ * In cooperative gameplay, the party shares vision - if one player
+ * sees an area, all players benefit. This creates tactical opportunities
+ * for scout classes (Rangers) to reveal areas for the whole party.
+ * 
+ * Performance optimization using Set for deduplication ensures
+ * O(n × m) complexity where n = players and m = average visible tiles.
+ * 
+ * @param playerPositions - Array of all player positions
+ * @param characterClasses - Corresponding character classes
+ * @param levels - Corresponding player levels
+ * @param tiles - Map tile data
+ * @returns Combined array of all positions visible to the party
+ * 
+ * @example
+ * ```ts
+ * // Update shared party vision
+ * const partyVision = getSharedVisibility(
+ *   players.map(p => p.position),
+ *   players.map(p => p.class),
+ *   players.map(p => p.level),
+ *   mapTiles
+ * );
+ * ```
  */
 export function getSharedVisibility(
   playerPositions: Position[],

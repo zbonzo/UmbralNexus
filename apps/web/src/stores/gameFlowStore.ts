@@ -18,6 +18,16 @@ export type PlayerReadyState = {
   isReady: boolean;
   selectedClass?: string;
   isHost: boolean;
+  position?: {
+    floor: number;
+    x: number;
+    y: number;
+  };
+  velocity?: { x: number; y: number };
+  targetId?: string;
+  health?: number;
+  maxHealth?: number;
+  actionPoints?: number;
 };
 
 interface GameFlowState {

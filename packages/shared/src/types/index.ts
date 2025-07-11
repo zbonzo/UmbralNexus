@@ -14,6 +14,12 @@ export type {
   Direction,
   CharacterClass,
   CharacterClassData,
+  PlayerAction,
+  MoveToAction,
+  SetTargetAction,
+  AbilityAction,
+  StopMovingAction,
+  ItemAction,
 } from './game';
 
 // WebSocket types

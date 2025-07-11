@@ -10,7 +10,6 @@ export interface IGame extends Document {
   floors: Floor[];
   currentPhase: 'lobby' | 'active' | 'victory' | 'defeat';
   startTime?: number;
-  endConditions: GameConfig['endConditions'];
   createdAt: Date;
   updatedAt: Date;
   endedAt?: Date;

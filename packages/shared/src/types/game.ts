@@ -1,7 +1,10 @@
 export interface GameConfig {
-  hostName: string;
   playerCap: number;
   difficulty: 'normal' | 'hard' | 'nightmare';
+  endConditions: {
+    type: 'TIME_LIMIT' | 'DEATH_COUNT' | 'FLOOR_COUNT';
+    value: number;
+  };
 }
 
 export interface Player {
@@ -11,13 +14,24 @@ export interface Player {
   level: number;
   health: number;
   maxHealth: number;
+  actionPoints: number; // Current action points
   position: {
     floor: number;
     x: number;
     y: number;
   };
-  actionPoints: number;
+  targetPosition?: {
+    x: number;
+    y: number;
+  };
+  velocity?: {
+    x: number;
+    y: number;
+  };
+  moveSpeed: number; // Units per second
+  targetId?: string; // Current target (player or enemy)
   abilities: Ability[];
+  abilityCooldowns: Record<string, number>; // abilityId -> cooldown end timestamp
   nexusEchoes: NexusEcho[];
   inventory: Item[];
   joinedAt: Date;
@@ -26,8 +40,13 @@ export interface Player {
 export interface Ability {
   id: string;
   name: string;
-  cost: number;
-  cooldown: number;
+  range: number; // Range in grid units
+  cooldownTime: number; // Cooldown in milliseconds
+  cost: number; // Action points cost
+  cooldown: number; // Current cooldown remaining
+  damageOrHeal?: number;
+  targetType: 'enemy' | 'ally' | 'self' | 'ground';
+  areaOfEffect?: number; // Radius for AoE abilities
   description?: string;
 }
 
@@ -47,7 +66,11 @@ export interface Item {
 
 export interface GameState {
   gameId: string;
+  name: string;
+  host: string;
+  config: GameConfig;
   players: Player[];
+  floors: Floor[];
   currentPhase: 'lobby' | 'active' | 'victory' | 'defeat';
   currentFloor: number;
   startTime?: number;
@@ -106,4 +129,41 @@ export interface CharacterClassData {
     cost: number;
     description?: string;
   }>;
+}
+
+// Player actions
+export interface PlayerAction {
+  type: 'MOVE_TO' | 'SET_TARGET' | 'USE_ABILITY' | 'USE_ITEM' | 'STOP_MOVING';
+  playerId: string;
+  timestamp: number;
+}
+
+export interface MoveToAction extends PlayerAction {
+  type: 'MOVE_TO';
+  targetPosition: {
+    x: number;
+    y: number;
+  };
+}
+
+export interface SetTargetAction extends PlayerAction {
+  type: 'SET_TARGET';
+  targetId: string | null; // null to clear target
+  targetType: 'player' | 'enemy';
+}
+
+export interface AbilityAction extends PlayerAction {
+  type: 'USE_ABILITY';
+  abilityId: string;
+  targetId?: string;
+  targetPosition?: Position;
+}
+
+export interface StopMovingAction extends PlayerAction {
+  type: 'STOP_MOVING';
+}
+
+export interface ItemAction extends PlayerAction {
+  type: 'USE_ITEM';
+  itemId: string;
 }

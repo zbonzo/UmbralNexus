@@ -1,22 +1,5 @@
-export const GAME_CONSTANTS = {
-  MAX_PLAYERS: 20,
-  MIN_PLAYERS: 1,
-  DEFAULT_AP_COUNT: 3,
-  TURN_TIME_LIMIT: 30, // seconds
-  RECONNECT_TIMEOUT: 300, // 5 minutes in seconds
-  
-  VISION_RANGE: {
-    DEFAULT: 5,
-    RANGER_BONUS: 2,
-  },
-  
-  MOVEMENT_COST: 1, // AP per tile
-  BASIC_ATTACK_COST: 1, // AP
-  
-  GAME_ID_LENGTH: 6,
-  PLAYER_NAME_MAX_LENGTH: 20,
-  GAME_NAME_MAX_LENGTH: 50,
-} as const;
+// Re-export comprehensive game constants
+export * from './gameConstants';
 
 export const CHARACTER_STATS = {
   warrior: {

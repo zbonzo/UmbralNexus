@@ -1,20 +1,38 @@
 import type { Position, Direction } from '../types/game';
 
 /**
- * Calculate the distance between two positions
- * @param pos1 First position
- * @param pos2 Second position
- * @returns Manhattan distance between positions
+ * Calculates the distance between two positions on the game grid.
+ * 
+ * **WARNING**: Currently uses Manhattan distance which is incorrect for hex grids.
+ * Hex grids require special distance calculation based on the coordinate system:
+ * - Offset coordinates (odd-q or even-q)
+ * - Axial coordinates (q, r)
+ * - Cubic coordinates (x, y, z where x + y + z = 0)
+ * 
+ * @param pos1 - First position on the grid
+ * @param pos2 - Second position on the grid
+ * @returns Manhattan distance (should be hex distance for proper pathfinding)
+ * 
+ * @todo Implement proper hex grid distance calculation
+ * @see https://www.redblobgames.com/grids/hexagons/#distances
  */
 export function calculateDistance(pos1: Position, pos2: Position): number {
   return Math.abs(pos1.x - pos2.x) + Math.abs(pos1.y - pos2.y);
 }
 
 /**
- * Calculate the Euclidean distance between two positions
- * @param pos1 First position
- * @param pos2 Second position
- * @returns Euclidean distance between positions
+ * Calculates the straight-line Euclidean distance between two positions.
+ * 
+ * Useful for:
+ * - Range checks for ranged abilities
+ * - Line-of-sight calculations
+ * - Visual effects and animations
+ * 
+ * Note: For movement costs on a hex grid, use hex distance instead.
+ * 
+ * @param pos1 - First position
+ * @param pos2 - Second position  
+ * @returns Euclidean distance (straight line)
  */
 export function calculateEuclideanDistance(pos1: Position, pos2: Position): number {
   const dx = pos1.x - pos2.x;
@@ -23,11 +41,20 @@ export function calculateEuclideanDistance(pos1: Position, pos2: Position): numb
 }
 
 /**
- * Get the new position after moving in a direction
- * @param currentPos Current position
- * @param direction Direction to move
- * @param distance Distance to move (default: 1)
+ * Calculates the new position after moving in a cardinal direction.
+ * 
+ * **WARNING**: This assumes a square grid. Hex grids have 6 directions:
+ * - For flat-top hexes: NE, E, SE, SW, W, NW
+ * - For pointy-top hexes: N, NE, SE, S, SW, NW
+ * 
+ * The offset depends on whether the current row/column is odd or even.
+ * 
+ * @param currentPos - Starting position
+ * @param direction - Cardinal direction to move (up/down/left/right)
+ * @param distance - Number of tiles to move (default: 1)
  * @returns New position after movement
+ * 
+ * @todo Update for hex grid movement with 6 directions
  */
 export function getNewPosition(
   currentPos: Position,
@@ -85,10 +112,27 @@ export function isPositionInArea(
 }
 
 /**
- * Get all positions within a certain range of a center position
- * @param center Center position
- * @param range Maximum range (Manhattan distance)
- * @returns Array of positions within range
+ * Gets all positions within a certain range of a center position.
+ * 
+ * Creates a diamond-shaped area (Manhattan distance) which is incorrect
+ * for hex grids. Hex grids should create a hexagonal area.
+ * 
+ * Used for:
+ * - Area-of-effect abilities
+ * - Movement range visualization
+ * - Fog of war calculations
+ * 
+ * @param center - Center position of the area
+ * @param range - Maximum distance from center
+ * @returns Array of all positions within range
+ * 
+ * @example
+ * ```ts
+ * // Get all tiles within 3 moves of player
+ * const moveOptions = getPositionsInRange(player.position, 3);
+ * ```
+ * 
+ * @todo Implement hex range calculation for proper hexagonal areas
  */
 export function getPositionsInRange(center: Position, range: number): Position[] {
   const positions: Position[] = [];
@@ -106,9 +150,16 @@ export function getPositionsInRange(center: Position, range: number): Position[]
 }
 
 /**
- * Get all adjacent positions (4-directional)
- * @param position Center position
- * @returns Array of adjacent positions
+ * Gets all orthogonally adjacent positions (4-directional: N, S, E, W).
+ * 
+ * **WARNING**: Hex grids have 6 neighbors, not 4!
+ * The neighbors depend on the coordinate system and whether
+ * the hex is in an odd or even row/column.
+ * 
+ * @param position - Center position
+ * @returns Array of 4 adjacent positions (should be 6 for hex)
+ * 
+ * @todo Implement getHexNeighbors() for proper hex adjacency
  */
 export function getAdjacentPositions(position: Position): Position[] {
   return [
@@ -120,9 +171,19 @@ export function getAdjacentPositions(position: Position): Position[] {
 }
 
 /**
- * Get all adjacent positions including diagonals (8-directional)
- * @param position Center position
- * @returns Array of adjacent positions including diagonals
+ * Gets all adjacent positions including diagonals (8-directional).
+ * 
+ * **WARNING**: This is for square grids. Hex grids don't have
+ * diagonal neighbors - they have exactly 6 neighbors.
+ * 
+ * Currently used for:
+ * - Explosion/splash damage (which might want a larger area)
+ * - Line of sight checks
+ * 
+ * @param position - Center position
+ * @returns Array of 8 adjacent positions
+ * 
+ * @deprecated Use getHexNeighbors() once implemented
  */
 export function getAllAdjacentPositions(position: Position): Position[] {
   const positions: Position[] = [];
@@ -167,10 +228,26 @@ export function isValidPosition(
 }
 
 /**
- * Get the direction from one position to another
- * @param from Starting position
- * @param to Target position
- * @returns Direction to move (or null if positions are the same)
+ * Determines the best cardinal direction to move from one position toward another.
+ * 
+ * Uses simple comparison of X/Y differences. For hex grids, this should
+ * consider the 6 hex directions and pick the one that reduces distance most.
+ * 
+ * Used by:
+ * - AI pathfinding for simple movement
+ * - Player auto-movement
+ * - Projectile direction
+ * 
+ * @param from - Starting position
+ * @param to - Target position
+ * @returns Best cardinal direction, or null if already at target
+ * 
+ * @example
+ * ```ts
+ * // Enemy moves toward player
+ * const direction = getDirectionTo(enemy.position, player.position);
+ * if (direction) enemy.move(direction);
+ * ```
  */
 export function getDirectionTo(from: Position, to: Position): Direction | null {
   const dx = to.x - from.x;
@@ -190,10 +267,24 @@ export function getDirectionTo(from: Position, to: Position): Direction | null {
 }
 
 /**
- * Generate a path between two positions (simple line-of-sight)
- * @param from Starting position
- * @param to Target position
- * @returns Array of positions forming a path
+ * Generates a simple straight-line path between two positions.
+ * 
+ * **IMPORTANT**: This is NOT A* pathfinding! It doesn't avoid obstacles
+ * or consider movement costs. It simply steps toward the target.
+ * 
+ * Current uses:
+ * - Line-of-sight checks
+ * - Projectile paths
+ * - Visual indicators
+ * 
+ * For actual pathfinding with obstacle avoidance, implement A* algorithm
+ * with hex grid heuristics.
+ * 
+ * @param from - Starting position
+ * @param to - Target position
+ * @returns Array of positions forming a direct path
+ * 
+ * @todo Implement proper A* pathfinding for hex grids
  */
 export function generateSimplePath(from: Position, to: Position): Position[] {
   const path: Position[] = [];

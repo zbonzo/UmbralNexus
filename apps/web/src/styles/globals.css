@@ -330,6 +330,16 @@ button {
   box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
 }
 
+.hex-tile--other-player {
+  background: rgb(59, 130, 246); /* Blue for other players */
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+}
+
+.hex-tile--targeted {
+  border: 2px solid rgb(255, 107, 53) !important;
+  box-shadow: 0 0 12px rgba(255, 107, 53, 0.8) !important;
+}
+
 .hex-tile--edge {
   border-color: rgba(255, 107, 53, 0.5); /* Orange border for edge tiles */
 }

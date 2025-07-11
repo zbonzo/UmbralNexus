@@ -23,6 +23,21 @@ export interface WebSocketOptions {
   timeout?: number;
 }
 
+// Message interfaces
+export interface ClientMessage {
+  type: ClientMessageType;
+  payload?: any;
+  timestamp: number;
+  messageId: string;
+}
+
+export interface ServerMessage {
+  type: ServerMessageType;
+  payload?: any;
+  timestamp: number;
+  messageId?: string;
+}
+
 // Client-to-Server message types
 export enum ClientMessageType {
   CREATE_GAME = 'CREATE_GAME',
@@ -40,6 +55,18 @@ export enum ServerMessageType {
   PLAYER_JOINED = 'PLAYER_JOINED',
   PLAYER_LEFT = 'PLAYER_LEFT',
   PLAYER_UPDATE = 'PLAYER_UPDATE',
+  PLAYER_POSITION_UPDATE = 'PLAYER_POSITION_UPDATE',
   ERROR = 'ERROR',
   HEARTBEAT = 'HEARTBEAT',
+}
+
+// Player position update payload
+export interface PlayerPositionUpdate {
+  playerId: string;
+  position: {
+    floor: number;
+    x: number;
+    y: number;
+  };
+  actionPoints?: number;
 }
